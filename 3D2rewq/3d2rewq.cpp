@@ -8,7 +8,7 @@
 #define PIE 3.1415926
 
 #define POSITION_INDEX(_z,_y,_x)        ((_z)*ny*nx + (_y)*nx + (_x))
-#define POSITION_VALUE(_z,_y,_x,_attr)  (( pPositionData + ((_z)*ny*nx + (_y)*nx + (_x))->_attr)
+#define POSITION_VALUE(_z,_y,_x,_attr)  (( pPositionData + ((_z)*ny*nx + (_y)*nx + (_x)))->_attr)
 
 typedef struct _POSITION_DATA{
     float u  ;
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
     struct timeval start,end;
     float all_time;
 
-    float *vpp, *density, *vss;
+    float *vpp, *density, *vss ,*up_out;
     float c[5][7];
     float *wave;
     float nshot,t0,tt,c0;
