@@ -291,17 +291,17 @@ int main(int argc, char **argv)
                         tempwyz=0.0f;
                         for(kk=1;kk<=mm;kk++)
                         {
-                            tempux2=tempux2+c[kk-1][0]*((pCurPos+POSITION_INDEX(k,j,i+kk))->u+((pCurPos+POSITION_INDEX(k,j,i-kk))->u));
-                            tempuy2=tempuy2+c[kk-1][0]*((pCurPos+POSITION_INDEX(k,j+kk,i))->u+((pCurPos+POSITION_INDEX(k,j-kk,i))->u));
-                            tempuz2=tempuz2+c[kk-1][0]*((pCurPos+POSITION_INDEX(k+kk,j,i))->u+((pCurPos+POSITION_INDEX(k-kk,j,i))->u));
+                            tempux2=tempux2+c[kk-1][0]*(POSITION_VALUE(k,j,i+kk,u)+POSITION_VALUE(k,j,i-kk,u));
+                            tempuy2=tempuy2+c[kk-1][0]*(POSITION_VALUE(k,j+kk,i,u)+POSITION_VALUE(k,j-kk,i,u));
+                            tempuz2=tempuz2+c[kk-1][0]*(POSITION_VALUE(k+kk,j,i,u)+POSITION_VALUE(k-kk,j,i,u));
 
-                            tempvx2=tempvx2+c[kk-1][0]*((pCurPos+POSITION_INDEX(k,j,i+kk))->v+((pCurPos+POSITION_INDEX(k,j,i-kk))->v));
-                            tempvy2=tempvy2+c[kk-1][0]*((pCurPos+POSITION_INDEX(k,j+kk,i))->v+((pCurPos+POSITION_INDEX(k,j-kk,i))->v));
-                            tempvz2=tempvz2+c[kk-1][0]*((pCurPos+POSITION_INDEX(k+kk,j,i))->v+((pCurPos+POSITION_INDEX(k-kk,j,i))->v));
+                            tempvx2=tempvx2+c[kk-1][0]*(POSITION_VALUE(k,j,i+kk,v)+POSITION_VALUE(k,j,i-kk,v));
+                            tempvy2=tempvy2+c[kk-1][0]*(POSITION_VALUE(k,j+kk,i,v)+POSITION_VALUE(k,j-kk,i,v));
+                            tempvz2=tempvz2+c[kk-1][0]*(POSITION_VALUE(k+kk,j,i,v)+POSITION_VALUE(k-kk,j,i,v));
 
-                            tempwx2=tempwx2+c[kk-1][0]*((pCurPos+POSITION_INDEX(k,j,i+kk))->w+((pCurPos+POSITION_INDEX(k,j,i-kk))->w));
-                            tempwy2=tempwy2+c[kk-1][0]*((pCurPos+POSITION_INDEX(k,j+kk,i))->w+((pCurPos+POSITION_INDEX(k,j-kk,i))->w));
-                            tempwz2=tempwz2+c[kk-1][0]*((pCurPos+POSITION_INDEX(k+kk,j,i))->w+((pCurPos+POSITION_INDEX(k-kk,j,i))->w));
+                            tempwx2=tempwx2+c[kk-1][0]*(POSITION_VALUE(k,j,i+kk,w)+POSITION_VALUE(k,j,i-kk,w));
+                            tempwy2=tempwy2+c[kk-1][0]*(POSITION_VALUE(k,j+kk,i,w)+POSITION_VALUE(k,j-kk,i,w));
+                            tempwz2=tempwz2+c[kk-1][0]*(POSITION_VALUE(k+kk,j,i,w)+POSITION_VALUE(k-kk,j,i,w));
                         } //for(kk=1;kk<=mm;kk++) end
 
                         tempux2=(tempux2+c0*pCurPos->u)*vvp2*dtx*dtx;
