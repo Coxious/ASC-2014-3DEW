@@ -7,7 +7,8 @@
 
 #define PIE 3.1415926
 
-#define POSITION_INDEX(_z,_y,_x) (_z*ny*nx + _y*nx + _x)
+#define POSITION_INDEX(_z,_y,_x)        ((_z)*ny*nx + (_y)*nx + (_x))
+#define POSITION_VALUE(_z,_y,_x,_attr)  (( pPositionData + ((_z)*ny*nx + (_y)*nx + (_x))->_attr)
 
 typedef struct _POSITION_DATA{
     float u  ;
@@ -138,14 +139,16 @@ int main(int argc, char **argv)
     fprintf(flog,"dyshot=%d\n\n",dyshot);
     fclose(flog);
 
-    const int nSize = nz*ny*nx；
+    const int nSize = nz*ny*nx;
+    const int nSliceSize = ny*nx;
 
     PPOSITION_DATA pPositionData = (PPOSITION_DATA)malloc(sizeof(POSITION_DATA)*(nSize));
 
     vpp     = (float*)malloc(sizeof(float)*nSize);
     density = (float*)malloc(sizeof(float)*nSize);
     vss     = (float*)malloc(sizeof(float)*nSize);
-    wave = (float*)malloc(sizeof(float)*lt);
+    wave    = (float*)malloc(sizeof(float)*lt);
+    up_out  = (float*)malloc(sizeof(float)*nx*ny);
 
     nshot=nxshot*nyshot;
     t0=1.0/frequency;
@@ -288,62 +291,71 @@ int main(int argc, char **argv)
                         tempwyz=0.0f;
                         for(kk=1;kk<=mm;kk++)
                         {
-                            tempux2=tempux2+c[kk-1][0]*(u[k*ny*nx+j*nx+(i+kk)]+u[k*ny*nx+j*nx+(i-kk)]);
-                            tempuy2=tempuy2+c[kk-1][0]*(u[k*ny*nx+(j+kk)*nx+i]+u[k*ny*nx+(j-kk)*nx+i]);
-                            tempuz2=tempuz2+c[kk-1][0]*(u[(k+kk)*ny*nx+j*nx+i]+u[(k-kk)*ny*nx+j*nx+i]);
+                            tempux2=tempux2+c[kk-1][0]*((pCurPos+POSITION_INDEX(k,j,i+kk))->u+((pCurPos+POSITION_INDEX(k,j,i-kk))->u));
+                            tempuy2=tempuy2+c[kk-1][0]*((pCurPos+POSITION_INDEX(k,j+kk,i))->u+((pCurPos+POSITION_INDEX(k,j-kk,i))->u));
+                            tempuz2=tempuz2+c[kk-1][0]*((pCurPos+POSITION_INDEX(k+kk,j,i))->u+((pCurPos+POSITION_INDEX(k-kk,j,i))->u));
 
-                            tempvx2=tempvx2+c[kk-1][0]*(v[k*ny*nx+j*nx+(i+kk)]+v[k*ny*nx+j*nx+(i-kk)]);
-                            tempvy2=tempvy2+c[kk-1][0]*(v[k*ny*nx+(j+kk)*nx+i]+v[k*ny*nx+(j-kk)*nx+i]);
-                            tempvz2=tempvz2+c[kk-1][0]*(v[(k+kk)*ny*nx+j*nx+i]+v[(k-kk)*ny*nx+j*nx+i]);
+                            tempvx2=tempvx2+c[kk-1][0]*((pCurPos+POSITION_INDEX(k,j,i+kk))->v+((pCurPos+POSITION_INDEX(k,j,i-kk))->v));
+                            tempvy2=tempvy2+c[kk-1][0]*((pCurPos+POSITION_INDEX(k,j+kk,i))->v+((pCurPos+POSITION_INDEX(k,j-kk,i))->v));
+                            tempvz2=tempvz2+c[kk-1][0]*((pCurPos+POSITION_INDEX(k+kk,j,i))->v+((pCurPos+POSITION_INDEX(k-kk,j,i))->v));
 
-                            tempwx2=tempwx2+c[kk-1][0]*(w[k*ny*nx+j*nx+(i+kk)]+w[k*ny*nx+j*nx+(i-kk)]);
-                            tempwy2=tempwy2+c[kk-1][0]*(w[k*ny*nx+(j+kk)*nx+i]+w[k*ny*nx+(j-kk)*nx+i]);
-                            tempwz2=tempwz2+c[kk-1][0]*(w[(k+kk)*ny*nx+j*nx+i]+w[(k-kk)*ny*nx+j*nx+i]);
-
+                            tempwx2=tempwx2+c[kk-1][0]*((pCurPos+POSITION_INDEX(k,j,i+kk))->w+((pCurPos+POSITION_INDEX(k,j,i-kk))->w));
+                            tempwy2=tempwy2+c[kk-1][0]*((pCurPos+POSITION_INDEX(k,j+kk,i))->w+((pCurPos+POSITION_INDEX(k,j-kk,i))->w));
+                            tempwz2=tempwz2+c[kk-1][0]*((pCurPos+POSITION_INDEX(k+kk,j,i))->w+((pCurPos+POSITION_INDEX(k-kk,j,i))->w));
                         } //for(kk=1;kk<=mm;kk++) end
 
-                        tempux2=(tempux2+c0*u[nIndex])*vvp2*dtx*dtx;
-                        tempuy2=(tempuy2+c0*u[nIndex])*vvs2*dtx*dtx;
-                        tempuz2=(tempuz2+c0*u[nIndex])*vvs2*dtz*dtz;
+                        tempux2=(tempux2+c0*pCurPos->u)*vvp2*dtx*dtx;
+                        tempuy2=(tempuy2+c0*pCurPos->u)*vvs2*dtx*dtx;
+                        tempuz2=(tempuz2+c0*pCurPos->u)*vvs2*dtz*dtz;
 
-                        tempvx2=(tempvx2+c0*v[nIndex])*vvs2*dtx*dtx;
-                        tempvy2=(tempvy2+c0*v[nIndex])*vvp2*dtx*dtx;
-                        tempvz2=(tempvz2+c0*v[nIndex])*vvs2*dtz*dtz;
+                        tempvx2=(tempvx2+c0*pCurPos->v)*vvs2*dtx*dtx;
+                        tempvy2=(tempvy2+c0*pCurPos->v)*vvp2*dtx*dtx;
+                        tempvz2=(tempvz2+c0*pCurPos->v)*vvs2*dtz*dtz;
 
-                        tempwx2=(tempwx2+c0*w[nIndex])*vvs2*dtx*dtx;
-                        tempwy2=(tempwy2+c0*w[nIndex])*vvs2*dtx*dtx;
-                        tempwz2=(tempwz2+c0*w[nIndex])*vvp2*dtz*dtz;
+                        tempwx2=(tempwx2+c0*pCurPos->w)*vvs2*dtx*dtx;
+                        tempwy2=(tempwy2+c0*pCurPos->w)*vvs2*dtx*dtx;
+                        tempwz2=(tempwz2+c0*pCurPos->w)*vvp2*dtz*dtz;
 
                         for(kk=1;kk<=mm;kk++)
                         {
                             for(kkk=1;kkk<=mm;kkk++)
                             {
-                                tempuxz=tempuxz+c[kkk-1][1+kk]*(u[(k+kkk)*ny*nx+j*nx+(i+kk)]
-                                                   -u[(k-kkk)*ny*nx+j*nx+(i+kk)]
-                                                   +u[(k-kkk)*ny*nx+j*nx+(i-kk)]
-                                                   -u[(k+kkk)*ny*nx+j*nx+(i-kk)]);
-                                tempuxy=tempuxy+c[kkk-1][1+kk]*(u[k*ny*nx+(j+kkk)*nx+(i+kk)]
-                                                   -u[k*ny*nx+(j-kkk)*nx+(i+kk)]
-                                                   +u[k*ny*nx+(j-kkk)*nx+(i-kk)]
-                                                   -u[k*ny*nx+(j+kkk)*nx+(i-kk)]);
+                                tempuxz=tempuxz+c[kkk-1][1+kk]*(
+                                     POSITION_VALUE(k+kkk,j,i+kk,u)
+                                    -POSITION_VALUE(k-kkk,j,i+kk,u)
+                                    +POSITION_VALUE(k-kkk,j,i-kk,u)
+                                    -POSITION_VALUE(k+kkk,j,i-kk,u));
 
-                                tempvyz=tempvyz+c[kkk-1][1+kk]*(v[(k+kkk)*ny*nx+(j+kk)*nx+i]
-                                                   -v[(k-kkk)*ny*nx+(j+kk)*nx+i]
-                                                   +v[(k-kkk)*ny*nx+(j-kk)*nx+i]
-                                                   -v[(k+kkk)*ny*nx+(j-kk)*nx+i]);
-                                tempvxy=tempvxy+c[kkk-1][1+kk]*(v[k*ny*nx+(j+kkk)*nx+(i+kk)]
-                                                   -v[k*ny*nx+(j-kkk)*nx+(i+kk)]
-                                                   +v[k*ny*nx+(j-kkk)*nx+(i-kk)]
-                                                   -v[k*ny*nx+(j+kkk)*nx+(i-kk)]);
+                                tempuxy=tempuxy+c[kkk-1][1+kk]*(
+                                     POSITION_VALUE(k,j+kkk,i+kk,u)
+                                    -POSITION_VALUE(k,j-kkk,i+kk,u)
+                                    +POSITION_VALUE(k,j-kkk,i-kk,u)
+                                    -POSITION_VALUE(k,j+kkk,i-kk,u));
+                                    
+                                tempvyz=tempvyz+c[kkk-1][1+kk]*(
+                                     POSITION_VALUE(k+kkk,j+kk,i,v)
+                                    -POSITION_VALUE(k-kkk,j+kk,i,v)
+                                    +POSITION_VALUE(k-kkk,j-kk,i,v)
+                                    -POSITION_VALUE(k+kkk,j-kk,i,v));
+                                    
+                                tempvxy=tempvxy+c[kkk-1][1+kk]*(
+                                     POSITION_VALUE(k,j+kkk,i+kk,v)
+                                    -POSITION_VALUE(k,j-kkk,i+kk,v)
+                                    +POSITION_VALUE(k,j-kkk,i-kk,v)
+                                    -POSITION_VALUE(k,j+kkk,i-kk,v));
+                                    
+                                tempwyz=tempwyz+c[kkk-1][1+kk]*(
+                                     POSITION_VALUE(k+kkk,j+kk,i,w)
+                                    -POSITION_VALUE(k-kkk,j+kk,i,w)
+                                    +POSITION_VALUE(k-kkk,j-kk,i,w)
+                                    -POSITION_VALUE(k+kkk,j-kk,i,w));
+                                    
+                                tempwxz=tempwxz+c[kkk-1][1+kk]*(
+                                     POSITION_VALUE(k+kkk,j,i+kk,w)
+                                    -POSITION_VALUE(k-kkk,j,i+kk,w)
+                                    +POSITION_VALUE(k-kkk,j,i-kk,w)
+                                    -POSITION_VALUE(k+kkk,j,i-kk,w));
 
-                                tempwyz=tempwyz+c[kkk-1][1+kk]*(w[(k+kkk)*ny*nx+(j+kk)*nx+i]
-                                                   -w[(k-kkk)*ny*nx+(j+kk)*nx+i]
-                                                   +w[(k-kkk)*ny*nx+(j-kk)*nx+i]
-                                                   -w[(k+kkk)*ny*nx+(j-kk)*nx+i]);
-                                tempwxz=tempwxz+c[kkk-1][1+kk]*(w[(k+kkk)*ny*nx+j*nx+(i+kk)]
-                                                   -w[(k-kkk)*ny*nx+j*nx+(i+kk)]
-                                                   +w[(k-kkk)*ny*nx+j*nx+(i-kk)]
-                                                   -w[(k+kkk)*ny*nx+j*nx+(i-kk)]);
                             } // for(kkk=1;kkk<=mm;kkk++) end
                         } //for(kk=1;kk<=mm;kk++) end
                         pCurPos->up=2.*pCurPos->up1-pCurPos->up2
@@ -398,7 +410,12 @@ int main(int argc, char **argv)
 
                     }//for(i=nleft;i<nright;i++) end
         }//for(l=1;l<=lt;l++) end
-        fwrite(up+169*ny*nx,sizeof(float),ny*nx,fout);
+        PPOSITION_DATA  pCurPos;
+        for(i=0,pCurPos=pPositionData+169*nSliceSize;i<nSliceSize;++i){
+            up_out[i] = pPositionData->up;
+            ++pCurPos;
+        }
+        fwrite(up_out,sizeof(float),nSliceSize,fout);
     }//for(ishot=1;ishot<=nshot;ishot++) end
     fclose(fout);
 
