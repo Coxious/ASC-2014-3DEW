@@ -399,8 +399,14 @@ int main(int argc, char **argv)
                         pCurPos->up2 = pCurPos->up1;
                         pCurPos->up1 = pCurPos->up;
 
+                        pCurPos->us2 = pCurPos->us1;
+                        pCurPos->us1 = pCurPos->us;
+
                         pCurPos->vp2 = pCurPos->vp1;
                         pCurPos->vp1 = pCurPos->vp;
+
+                        pCurPos->vs2 = pCurPos->vs1;
+                        pCurPos->vs1 = pCurPos->vs;
 
                         pCurPos->wp2 = pCurPos->wp1;
                         pCurPos->wp1 = pCurPos->wp;
@@ -411,8 +417,8 @@ int main(int argc, char **argv)
                     }//for(i=nleft;i<nright;i++) end
         }//for(l=1;l<=lt;l++) end
         PPOSITION_DATA  pCurPos;
-        for(i=0,pCurPos=pPositionData+169*nSliceSize;i<nSliceSize;++i){
-            up_out[i] = pPositionData->up;
+        for(i=0,pCurPos=pPositionData+POSITION_INDEX(169,0,0);i<nSliceSize;++i){
+            up_out[i] = pCurPos->up;
             ++pCurPos;
         }
         fwrite(up_out,sizeof(float),nSliceSize,fout);
@@ -425,6 +431,7 @@ int main(int argc, char **argv)
     free(density);
     free(vss);
     free(wave);
+    free(up_out);
 
     gettimeofday(&end,NULL);
     all_time = (end.tv_sec-start.tv_sec)+(float)(end.tv_usec-start.tv_usec)/1000000.0;
