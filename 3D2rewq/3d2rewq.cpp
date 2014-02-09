@@ -51,7 +51,7 @@ int main(int argc, char **argv)
     struct timeval start,end;
     float all_time;
 
-    float *vpp, *density, *vss ,*up_out;
+    float *vpp, /* *density,**/ *vss ,*up_out;
     float c[5][7];
     float *wave;
     float nshot,t0,tt,c0;
@@ -145,7 +145,7 @@ int main(int argc, char **argv)
     PPOSITION_DATA pPositionData = (PPOSITION_DATA)malloc(sizeof(POSITION_DATA)*(nSize));
 
     vpp     = (float*)malloc(sizeof(float)*nSize);
-    density = (float*)malloc(sizeof(float)*nSize);
+    // density = (float*)malloc(sizeof(float)*nSize);
     vss     = (float*)malloc(sizeof(float)*nSize);
     wave    = (float*)malloc(sizeof(float)*lt);
     up_out  = (float*)malloc(sizeof(float)*nx*ny);
@@ -161,19 +161,19 @@ int main(int argc, char **argv)
                 {
                     vpp[nIndex]=2300.;
                     vss[nIndex]=1232.;
-                    density[nIndex]=1.;
+                    // density[nIndex]=1.;
                 }
                 else if(i>=210 && i<260)
                 {
                     vpp[nIndex]=2800.;
                     vss[nIndex]=1509.;
-                    density[nIndex]=2.;
+                    // density[nIndex]=2.;
                 }
                 else
                 {
                     vpp[nIndex]=3500.;
                     vss[nIndex]=1909.;
-                    density[nIndex]=2.5;
+                    // density[nIndex]=2.5;
                 }
             }
 
@@ -218,12 +218,13 @@ int main(int argc, char **argv)
     dtxz4=dtx*dtx*dtz*dtz;
 
     fout=fopen(outfile,"wb");
+    // shot is divided to cluster, MPI
     for(ishot=1;ishot<=nshot;ishot++)
     {
         printf("shot=%d\n",ishot);
-	flog = fopen(logfile,"a");
+	    flog = fopen(logfile,"a");
         fprintf(flog,"shot=%d\n",ishot);
-	fclose(flog);
+	    fclose(flog);
         ncy_shot=ncy_shot1+(ishot/nxshot)*dyshot;
         ncx_shot=ncx_shot1+(ishot%nxshot)*dxshot;
 
@@ -248,6 +249,7 @@ int main(int argc, char **argv)
             ntop = ntop-1;
             nfront = nfront-1;
             nleft = nleft-1;
+            // cout << ntop-nbottom << ' ' << nback-nfront << ' ' << nright-nleft << endl;
             for(k=ntop;k<nbottom;k++)
                 for(j=nfront;j<nback;j++)
                     for(i=nleft;i<nright;i++)
@@ -289,6 +291,7 @@ int main(int argc, char **argv)
                         tempvxy=0.0f;
                         tempwxz=0.0f;
                         tempwyz=0.0f;
+
                         for(kk=1;kk<=mm;kk++)
                         {
                             tempux2=tempux2+c[kk-1][0]*(POSITION_VALUE(k,j,i+kk,u)+POSITION_VALUE(k,j,i-kk,u));
@@ -396,26 +399,10 @@ int main(int argc, char **argv)
                         pCurPos->v = pCurPos->vp + pCurPos->vs;
                         pCurPos->w = pCurPos->wp + pCurPos->ws;
 
-                        pCurPos->up2 = pCurPos->up1;
-                        pCurPos->up1 = pCurPos->up;
-
-                        pCurPos->us2 = pCurPos->us1;
-                        pCurPos->us1 = pCurPos->us;
-
-                        pCurPos->vp2 = pCurPos->vp1;
-                        pCurPos->vp1 = pCurPos->vp;
-
-                        pCurPos->vs2 = pCurPos->vs1;
-                        pCurPos->vs1 = pCurPos->vs;
-
-                        pCurPos->wp2 = pCurPos->wp1;
-                        pCurPos->wp1 = pCurPos->wp;
-
-                        pCurPos->ws2 = pCurPos->ws1;
-                        pCurPos->ws1 = pCurPos->ws;
-
+                        memcpy(pCurPos->up1,pCurPos->up,sizeof(float)*17);
                     }//for(i=nleft;i<nright;i++) end
         }//for(l=1;l<=lt;l++) end
+        
         PPOSITION_DATA  pCurPos;
         for(i=0,pCurPos=pPositionData+POSITION_INDEX(169,0,0);i<nSliceSize;++i){
             up_out[i] = pCurPos->up;
@@ -428,7 +415,7 @@ int main(int argc, char **argv)
     free(pPositionData);
 
     free(vpp);
-    free(density);
+    // free(density);
     free(vss);
     free(wave);
     free(up_out);
