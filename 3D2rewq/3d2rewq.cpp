@@ -217,6 +217,21 @@ int main(int argc, char **argv)
     dtz4=dtz*dtz*dtz*dtz;
     dtxz4=dtx*dtx*dtz*dtz;
 
+    float vvp2_dtx_dtx;     
+    float vvs2_dtx_dtx;     
+    float vvs2_dtz_dtz;     
+
+    float vvs2_dtx_dtx;     
+    float vvp2_dtx_dtx;     
+    float vvs2_dtz_dtz;     
+
+    float vvs2_dtx_dtx;     
+    float vvs2_dtx_dtx;     
+    float vvp2_dtz_dtz;     
+
+    float vvp2_dtz_dtx;     
+    float vvs2_dtz_dtx;     
+
     fout=fopen(outfile,"wb");
     // shot is divided to cluster, MPI
     for(ishot=1;ishot<=nshot;ishot++)
@@ -250,6 +265,8 @@ int main(int argc, char **argv)
             nfront = nfront-1;
             nleft = nleft-1;
             // cout << ntop-nbottom << ' ' << nback-nfront << ' ' << nright-nleft << endl;
+
+            #pragma omp parallel for
             for(k=ntop;k<nbottom;k++)
                 for(j=nfront;j<nback;j++)
                     for(i=nleft;i<nright;i++)
@@ -275,6 +292,22 @@ int main(int argc, char **argv)
                         vvs2=vss[nIndex]*vss[nIndex];
                         drd1=dr1*vvs2;
                         drd2=dr2*vvs2;
+
+
+                        vvp2_dtx_dtx = vvp2*dtx*dtx;
+                        vvs2_dtx_dtx = vvs2*dtx*dtx;
+                        vvs2_dtz_dtz = vvs2*dtz*dtz;
+
+                        vvs2_dtx_dtx = vvs2*dtx*dtx;
+                        vvp2_dtx_dtx = vvp2*dtx*dtx;
+                        vvs2_dtz_dtz = vvs2*dtz*dtz;
+
+                        vvs2_dtx_dtx = vvs2*dtx*dtx;
+                        vvs2_dtx_dtx = vvs2*dtx*dtx;
+                        vvp2_dtz_dtz = vvp2*dtz*dtz;
+
+                        vvp2_dtz_dtx = vvp2*dtz*dtx;
+                        vvs2_dtz_dtx = vvs2*dtz*dtx;
 
                         tempux2=0.0f;
                         tempuy2=0.0f;
@@ -307,17 +340,17 @@ int main(int argc, char **argv)
                             tempwz2=tempwz2+c[kk-1][0]*(POSITION_VALUE(k+kk,j,i,w)+POSITION_VALUE(k-kk,j,i,w));
                         } //for(kk=1;kk<=mm;kk++) end
 
-                        tempux2=(tempux2+c0*pCurPos->u)*vvp2*dtx*dtx;
-                        tempuy2=(tempuy2+c0*pCurPos->u)*vvs2*dtx*dtx;
-                        tempuz2=(tempuz2+c0*pCurPos->u)*vvs2*dtz*dtz;
+                        tempux2=(tempux2+c0*pCurPos->u)*vvp2_dtx_dtx;
+                        tempuy2=(tempuy2+c0*pCurPos->u)*vvs2_dtx_dtx;
+                        tempuz2=(tempuz2+c0*pCurPos->u)*vvs2_dtz_dtz;
 
-                        tempvx2=(tempvx2+c0*pCurPos->v)*vvs2*dtx*dtx;
-                        tempvy2=(tempvy2+c0*pCurPos->v)*vvp2*dtx*dtx;
-                        tempvz2=(tempvz2+c0*pCurPos->v)*vvs2*dtz*dtz;
+                        tempvx2=(tempvx2+c0*pCurPos->v)*vvs2_dtx_dtx;
+                        tempvy2=(tempvy2+c0*pCurPos->v)*vvp2_dtx_dtx;
+                        tempvz2=(tempvz2+c0*pCurPos->v)*vvs2_dtz_dtz;
 
-                        tempwx2=(tempwx2+c0*pCurPos->w)*vvs2*dtx*dtx;
-                        tempwy2=(tempwy2+c0*pCurPos->w)*vvs2*dtx*dtx;
-                        tempwz2=(tempwz2+c0*pCurPos->w)*vvp2*dtz*dtz;
+                        tempwx2=(tempwx2+c0*pCurPos->w)*vvs2_dtx_dtx;
+                        tempwy2=(tempwy2+c0*pCurPos->w)*vvs2_dtx_dtx;
+                        tempwz2=(tempwz2+c0*pCurPos->w)*vvp2_dtz_dtz;
 
                         for(kk=1;kk<=mm;kk++)
                         {
@@ -362,36 +395,37 @@ int main(int argc, char **argv)
                             } // for(kkk=1;kkk<=mm;kkk++) end
                         } //for(kk=1;kk<=mm;kk++) end
                         pCurPos->up=2.*pCurPos->up1-pCurPos->up2
-                                          +tempux2+tempwxz*vvp2*dtz*dtx
-                                          +tempvxy*vvp2*dtz*dtx;
+                                          +tempux2+tempwxz*vvp2_dtz_dtx
+                                          +tempvxy*vvp2_dtz_dtx;
 
                         pCurPos->vp=2.*pCurPos->vp1-pCurPos->vp2
-                                          +tempvy2+tempuxy*vvp2*dtz*dtx
-                                          +tempwyz*vvp2*dtz*dtx;
+                                          +tempvy2+tempuxy*vvp2_dtz_dtx
+                                          +tempwyz*vvp2_dtz_dtx;
                         
                         pCurPos->wp=2.*pCurPos->wp1-pCurPos->wp2
-                                          +tempwz2+tempuxz*vvp2*dtz*dtx
-                                          +tempvyz*vvp2*dtz*dtx
+                                          +tempwz2+tempuxz*vvp2_dtz_dtx
+                                          +tempvyz*vvp2_dtz_dtx
                                           +px*wave[l-1];
                         
                         pCurPos->us=2.*pCurPos->us1-pCurPos->us2
                                           +tempuy2+tempuz2
-                                          -tempvxy*vvs2*dtz*dtx-tempwxz*vvs2*dtz*dtx;
+                                          -tempvxy*vvs2_dtz_dtx-tempwxz*vvs2_dtz_dtx;
                         
                         pCurPos->vs=2.*pCurPos->vs1-pCurPos->vs2
                                           +tempvx2+tempvz2
-                                          -tempuxy*vvs2*dtz*dtx-tempwyz*vvs2*dtz*dtx;
+                                          -tempuxy*vvs2_dtz_dtx-tempwyz*vvs2_dtz_dtx;
                         
                         pCurPos->ws=2.*pCurPos->ws1-pCurPos->ws2
                                           +tempwx2+tempwy2
-                                          -tempuxz*vvs2*dtz*dtx-tempvyz*vvs2*dtz*dtx;
+                                          -tempuxz*vvs2_dtz_dtx-tempvyz*vvs2_dtz_dtx;
                     }//for(i=nleft;i<nright;i++) end
 
+            #pragma offload target(mic:0)
+            #pragma omp parallel for 
             for(k=ntop;k<nbottom;k++)
                 for(j=nfront;j<nback;j++)
                     for(i=nleft;i<nright;i++)
                     {
-
                         int nIndex              = POSITION_INDEX(k,j,i);
                         PPOSITION_DATA  pCurPos = pPositionData + nIndex;
 
@@ -399,7 +433,24 @@ int main(int argc, char **argv)
                         pCurPos->v = pCurPos->vp + pCurPos->vs;
                         pCurPos->w = pCurPos->wp + pCurPos->ws;
 
-                        memcpy(pCurPos->up1,pCurPos->up,sizeof(float)*17);
+                        pCurPos->up2 = pCurPos->up1;
+                        pCurPos->up1 = pCurPos->up;
+
+                        pCurPos->us2 = pCurPos->us1;
+                        pCurPos->us1 = pCurPos->us;
+
+                        pCurPos->vp2 = pCurPos->vp1;
+                        pCurPos->vp1 = pCurPos->vp;
+
+                        pCurPos->vs2 = pCurPos->vs1;
+                        pCurPos->vs1 = pCurPos->vs;
+
+                        pCurPos->wp2 = pCurPos->wp1;
+                        pCurPos->wp1 = pCurPos->wp;
+
+                        pCurPos->ws2 = pCurPos->ws1;
+                        pCurPos->ws1 = pCurPos->ws;
+
                     }//for(i=nleft;i<nright;i++) end
         }//for(l=1;l<=lt;l++) end
         
