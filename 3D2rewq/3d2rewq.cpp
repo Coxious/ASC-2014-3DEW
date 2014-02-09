@@ -218,17 +218,9 @@ int main(int argc, char **argv)
     dtxz4=dtx*dtx*dtz*dtz;
 
     float vvp2_dtx_dtx;     
-    float vvs2_dtx_dtx;     
     float vvs2_dtz_dtz;     
-
-    float vvs2_dtx_dtx;     
-    float vvp2_dtx_dtx;     
-    float vvs2_dtz_dtz;     
-
-    float vvs2_dtx_dtx;     
     float vvs2_dtx_dtx;     
     float vvp2_dtz_dtz;     
-
     float vvp2_dtz_dtx;     
     float vvs2_dtz_dtx;     
 
@@ -293,19 +285,10 @@ int main(int argc, char **argv)
                         drd1=dr1*vvs2;
                         drd2=dr2*vvs2;
 
-
-                        vvp2_dtx_dtx = vvp2*dtx*dtx;
-                        vvs2_dtx_dtx = vvs2*dtx*dtx;
                         vvs2_dtz_dtz = vvs2*dtz*dtz;
-
-                        vvs2_dtx_dtx = vvs2*dtx*dtx;
                         vvp2_dtx_dtx = vvp2*dtx*dtx;
-                        vvs2_dtz_dtz = vvs2*dtz*dtz;
-
-                        vvs2_dtx_dtx = vvs2*dtx*dtx;
                         vvs2_dtx_dtx = vvs2*dtx*dtx;
                         vvp2_dtz_dtz = vvp2*dtz*dtz;
-
                         vvp2_dtz_dtx = vvp2*dtz*dtx;
                         vvs2_dtz_dtx = vvs2*dtz*dtx;
 
@@ -420,7 +403,6 @@ int main(int argc, char **argv)
                                           -tempuxz*vvs2_dtz_dtx-tempvyz*vvs2_dtz_dtx;
                     }//for(i=nleft;i<nright;i++) end
 
-            #pragma offload target(mic:0)
             #pragma omp parallel for 
             for(k=ntop;k<nbottom;k++)
                 for(j=nfront;j<nback;j++)
