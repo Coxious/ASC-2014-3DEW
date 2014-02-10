@@ -59,7 +59,7 @@ int main(int argc, char **argv)
     float c[5][7];
     float *wave;
     float nshot,t0,tt,c0;
-    float dtx,dtz,dtxz,dr1,dr2,dtx4,dtz4,dtxz4;
+    float dtx,dtz,dtxz;
     float xmax,px,sx;
     float vvp2,drd1,drd2,vvs2,tempux2,tempuy2,tempuz2,tempvx2,tempvy2,tempvz2,
           tempwx2,tempwy2,tempwz2,tempuxz,tempuxy,tempvyz,tempvxy,tempwxz,tempwyz;
@@ -151,41 +151,11 @@ int main(int argc, char **argv)
 
     PPOSITION_DATA pPositionData = (PPOSITION_DATA)malloc(sizeof(POSITION_DATA)*(long long)(nSize));
 
-//    vpp     = (float*)malloc(sizeof(float)*nSize);
-    // density = (float*)malloc(sizeof(float)*nSize);
-//    vss     = (float*)malloc(sizeof(float)*nSize);
     wave    = (float*)malloc(sizeof(float)*lt);
     up_out  = (float*)malloc(sizeof(float)*nx*ny);
 
     nshot=nxshot*nyshot;
     t0=1.0/frequency;
-/*    for(i=0;i<nz;i++)
-        for(j=0;j<ny;j++)
-            for(k=0;k<nx;k++)
-            { 
-
-
-                int nIndex = POSITION_INDEX(i,j,k);
-                if(i<210)
-                {
-                    vpp[nIndex]=2300.;
-                    vss[nIndex]=1232.;
-                    // density[nIndex]=1.;
-                }
-                else if(i>=210 && i<260)
-                {
-                    vpp[nIndex]=2800.;
-                    vss[nIndex]=1509.;
-                    // density[nIndex]=2.;
-                }
-                else
-                {
-                    vpp[nIndex]=3500.;
-                    vss[nIndex]=1909.;
-                    // density[nIndex]=2.5;
-                }
-            }
-*/
     for(l=0;l<lt;l++)
     {
         tt=l*dt;
@@ -218,13 +188,6 @@ int main(int argc, char **argv)
     dtx=dt/unit;
     dtz=dt/unit;
     dtxz=dtx*dtz;
-
-    dr1=dtx*dtx/2.;
-    dr2=dtz*dtz/2.;
-
-    dtx4=dtx*dtx*dtx*dtx;
-    dtz4=dtz*dtz*dtz*dtz;
-    dtxz4=dtx*dtx*dtz*dtz;
 
     float vvp2_dtx_dtx;     
     float vvs2_dtz_dtz;     
