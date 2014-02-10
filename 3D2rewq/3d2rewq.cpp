@@ -7,36 +7,46 @@
 
 #define PIE 3.1415926
 
-#define POSITION_INDEX(_z,_y,_x)        ((_z)*ny*nx + (_y)*nx + (_x))
-#define POSITION_VALUE(_z,_y,_x,_attr)  (( pPositionData + ((_z)*ny*nx + (_y)*nx + (_x)))->_attr)
+#define POSITION_INDEX_X(_z,_y,_x)        ((_z)*ny*nx + (_y)*nx + (_x))
+#define POSITION_INDEX_Y(_z,_y,_x)        ((_x)*nz*ny + (_z)*ny + (_y))
+#define POSITION_INDEX_Z(_z,_y,_x)        ((_y)*nx*nz + (_x)*nz + (_z))
 
+#define POSITION_VALUE_X(_z_,_y_,_x_,_attr_ ((_attr__x[POSITION_VALUE_X(_z,_y,_z)]
+#define POSITION_VALUE_Y(_z_,_y_,_x_,_attr_ ((_attr__y[POSITION_VALUE_Y(_z,_y,_z)]
+#define POSITION_VALUE_Z(_z_,_y_,_x_,_attr_ ((_attr__z[POSITION_VALUE_Z(_z,_y,_z)]
+
+#define POSITION_VALUE(_z,_y,_x,_attr)  (( pPositionData + ((_z)*ny*nx + (_y)*nx + (_x)))->_attr)
 
 #define vpp2(_z) ((_z<210)?(5290000):(_z>=260?12250000:7840000))
 #define vss2(_z) ((_z<210)?(1517824):(_z>=260?3644281:2277081))
  
-typedef struct _POSITION_DATA{
-    float u  ;
-    float v  ;
-    float w  ;
-    float up ;
-    float up1; 
-    float up2; 
-    float vp ;
-    float vp1;
-    float vp2; 
-    float wp ; 
-    float wp1; 
-    float wp2; 
-    float us ;
-    float us1; 
-    float us2; 
-    float vs ; 
-    float vs1; 
-    float vs2; 
-    float ws ; 
-    float ws1; 
-    float ws2; 
-}POSITION_DATA,*PPOSITION_DATA;
+float *u_x;
+float *v_x;
+float *w_x;
+float *u_y;
+float *v_y;
+float *w_y;
+float *u_z;
+float *v_z;
+float *w_z;
+float *up ;
+float *up1; 
+float *up2; 
+float *vp ;
+float *vp1;
+float *vp2; 
+float *wp ; 
+float *wp1; 
+float *wp2; 
+float *us ;
+float *us1; 
+float *us2; 
+float *vs ; 
+float *vs1; 
+float *vs2; 
+float *ws ; 
+float *ws1; 
+float *ws2; 
 
 int main(int argc, char **argv)
 {
@@ -149,10 +159,36 @@ int main(int argc, char **argv)
     const int nSize = nz*ny*nx;
     const int nSliceSize = ny*nx;
 
-    PPOSITION_DATA pPositionData = (PPOSITION_DATA)malloc(sizeof(POSITION_DATA)*(long long)(nSize));
+    u_x = calloc(sizeof(float) * nSize);
+    v_x = calloc(sizeof(float) * nSize);
+    w_x = calloc(sizeof(float) * nSize);
+    u_y = calloc(sizeof(float) * nSize);
+    v_y = calloc(sizeof(float) * nSize);
+    w_y = calloc(sizeof(float) * nSize);
+    u_z = calloc(sizeof(float) * nSize);
+    v_z = calloc(sizeof(float) * nSize);
+    w_z = calloc(sizeof(float) * nSize);
+    up  = calloc(sizeof(float) * nSize);
+    up1 = calloc(sizeof(float) * nSize); 
+    up2 = calloc(sizeof(float) * nSize); 
+    vp  = calloc(sizeof(float) * nSize);
+    vp1 = calloc(sizeof(float) * nSize);
+    vp2 = calloc(sizeof(float) * nSize); 
+    wp  = calloc(sizeof(float) * nSize); 
+    wp1 = calloc(sizeof(float) * nSize); 
+    wp2 = calloc(sizeof(float) * nSize); 
+    us  = calloc(sizeof(float) * nSize);
+    us1 = calloc(sizeof(float) * nSize); 
+    us2 = calloc(sizeof(float) * nSize); 
+    vs  = calloc(sizeof(float) * nSize); 
+    vs1 = calloc(sizeof(float) * nSize); 
+    vs2 = calloc(sizeof(float) * nSize); 
+    ws  = calloc(sizeof(float) * nSize); 
+    ws1 = calloc(sizeof(float) * nSize); 
+    ws2 = calloc(sizeof(float) * nSize); 
 
-    wave    = (float*)malloc(sizeof(float)*lt);
-    up_out  = (float*)malloc(sizeof(float)*nx*ny);
+    wave    = (float*)calloc(sizeof(float)*lt);
+    up_out  = (float*)calloc(sizeof(float)*nx*ny);
 
     nshot=nxshot*nyshot;
     t0=1.0/frequency;
@@ -203,13 +239,12 @@ int main(int argc, char **argv)
     for(ishot=1;ishot<=nshot;ishot++)
     {
         printf("shot=%d\n",ishot);
-	    flog = fopen(logfile,"a");
+        flog = fopen(logfile,"a");
         fprintf(flog,"shot=%d\n",ishot);
-	    fclose(flog);
+        fclose(flog);
         ncy_shot=ncy_shot1+(ishot/nxshot)*dyshot;
         ncx_shot=ncx_shot1+(ishot%nxshot)*dxshot;
 
-        memset(pPositionData,0,nSize*sizeof(POSITION_DATA));
 
         for(l=1;l<=lt;l++)
         {
@@ -233,6 +268,97 @@ int main(int argc, char **argv)
             // cout << ntop-nbottom << ' ' << nback-nfront << ' ' << nright-nleft << endl;
 
             #pragma omp parallel for
+            // X            
+            for ( k=ntop; k<nbottom; k++ ) {
+                vvp2=vpp2(k);
+                vvs2=vss2(k);
+
+                vvp2_dtx_dtx = vvp2*dtx*dtx;
+                vvs2_dtx_dtx = vvs2*dtx*dtx;
+
+                for ( j=nfront; j<nback; j++ ) {
+                    nIndex = POSITION_INDEX_X(k,j,nleft);
+                    for ( i=nleft; i<nright; i++ ) {
+                        nIndex++;
+                        tempux2 = c0*u_x[nIndex];
+                        tempvx2 = c0*v_x[nIndex];
+                        tempzx2 = c0*z_x[nIndex];
+                        for(kk=1;kk<=mm;kk++)
+                        {
+                            tempux2=tempux2+c[kk-1][0]*(u_x[POSITION_INDEX_X(k,j,i+kk)]+u_x[POSITION_INDEX_X(k,j,i-kk)]);
+
+                            tempvx2=tempvx2+c[kk-1][0]*(v_x[POSITION_INDEX_X(k,j,i+kk)]+v_x[POSITION_INDEX_X(k,j,i-kk)]);
+
+                            tempwx2=tempwx2+c[kk-1][0]*(w_x[POSITION_INDEX_X(k,j,i+kk)]+w_x[POSITION_INDEX_X(k,j,i-kk)]);
+                        } //for(kk=1;kk<=mm;kk++) end
+
+                        tempux2 *= vvp2_dtx_dtx;    
+                        tempvx2 *= vvs2_dtx_dtx;
+                        tempwx2 *= vvs2_dtx_dtx;    
+                    }   
+                }
+            }
+            // Y
+            for ( i=nleft; i<nright; i++ ) {
+                for ( k=ntop; k<nbottom; k++ ) {
+                        vvp2=vpp2(k);
+                        vvs2=vss2(k);
+
+                        vvp2_dtx_dtx = vvp2*dtx*dtx;
+                        vvs2_dtx_dtx = vvs2*dtx*dtx;
+
+                        nIndex = POSITION_INDEX_Y(i,k,nfront);
+                    for ( j=nfront; j<nback; j++ ) {
+                        nIndex++;
+                        tempuy2 = c0*u_y[nIndex];
+                        tempvy2 = c0*v_y[nIndex];
+                        tempzy2 = c0*z_y[nIndex];
+                        for(kk=1;kk<=mm;kk++)
+                        {
+                            tempuy2=tempuy2+c[kk-1][0]*(u_y[POSITION_INDEX_Y(i, k, j+kk)]+u_y[POSITION_INDEX_Y(i, k, j-kk)]);
+
+                            tempvy2=tempvy2+c[kk-1][0]*(v_y[POSITION_INDEX_Y(i, k, j+kk)]+v_y[POSITION_INDEX_Y(i, k, j-kk)]);
+
+                            tempwy2=tempwy2+c[kk-1][0]*(w_y[POSITION_INDEX_Y(i, k, j+kk)]+w_y[POSITION_INDEX_Y(i, k, j-kk)]);
+                        } //for(kk=1;kk<=mm;kk++) end
+                    
+                        tempuy2 *= vvs2_dtx_dtx;    
+                        tempvy2 *= vvp2_dtx_dtx;
+                        tempwy2 *= vvs2_dtx_dtx;
+                    }
+                }
+            }
+            // Z
+            for ( j=nfront; j<nback; j++ ) {
+                for ( i=nleft; i<nright; i++ ) {
+                    nIndex = POSITION_INDEX_Z(j, i, ntop);
+                    for ( k=ntop; k<nbottom; k++ ) {
+                        vvp2=vpp2(k);
+                        vvs2=vss2(k);
+
+                        vvs2_dtz_dtz = vvs2*dtz*dtz;
+                        vvp2_dtz_dtz = vvp2*dtz*dtz;
+
+                        nIndex++;
+                        tempuz2 = c0*u_z[nIndex];
+                        tempvz2 = c0*v_z[nIndex];
+                        tempzz2 = c0*z_z[nIndex];
+                        for(kk=1;kk<=mm;kk++)
+                        {
+                            tempuz2=tempuz2+c[kk-1][0]*(u_z[POSITION_INDEX_Z(j, i, k+kk)]+u_z[POSITION_INDEX_Z(j, i, k-kk)]);
+
+                            tempvz2=tempvz2+c[kk-1][0]*(v_z[POSITION_INDEX_Z(j, i, k+kk)]+v_z[POSITION_INDEX_Z(j, i, k-kk)]);
+
+                            tempwz2=tempwz2+c[kk-1][0]*(w_z[POSITION_INDEX_Z(j, i, k+kk)]+w_z[POSITION_INDEX_Z(j, i, k-kk)]);
+                        } //for(kk=1;kk<=mm;kk++) end
+
+                        tempuz2 *= vvs2_dtz_dtz;    
+                        tempvz2 *= vvs2_dtz_dtz;
+                        tempwz2 *= vvp2_dtz_dtz;
+                    }
+                }
+            }
+
             for(k=ntop;k<nbottom;k++)
             {
                 vvp2=vpp2(k);
@@ -250,7 +376,6 @@ int main(int argc, char **argv)
                     {
                         int nIndex              = POSITION_INDEX(k,j,i);
                         PPOSITION_DATA  pCurPos = pPositionData + nIndex;
-
 
                         if(i==ncx_shot-1&&j==ncy_shot-1&&k==ncz_shot-1)
                         {
@@ -432,10 +557,36 @@ int main(int argc, char **argv)
     }//for(ishot=1;ishot<=nshot;ishot++) end
     fclose(fout);
 
-    free(pPositionData);
-
+    free(u_x);
+    free(v_x);
+    free(w_x);
+    free(u_y);
+    free(v_y);
+    free(w_y);
+    free(u_z);
+    free(v_z);
+    free(w_z);
+    free(up );
+    free(up1); 
+    free(up2); 
+    free(vp );
+    free(vp1);
+    free(vp2); 
+    free(wp ); 
+    free(wp1); 
+    free(wp2); 
+    free(us );
+    free(us1); 
+    free(us2); 
+    free(vs ); 
+    free(vs1); 
+    free(vs2); 
+    free(ws ); 
+    free(ws1); 
+    free(ws2); 
     free(wave);
     free(up_out);
+
 
     gettimeofday(&end,NULL);
     all_time = (end.tv_sec-start.tv_sec)+(float)(end.tv_usec-start.tv_usec)/1000000.0;
