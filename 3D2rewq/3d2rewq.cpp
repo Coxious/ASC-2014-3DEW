@@ -10,6 +10,10 @@
 #define POSITION_INDEX(_z,_y,_x)        ((_z)*ny*nx + (_y)*nx + (_x))
 #define POSITION_VALUE(_z,_y,_x,_attr)  (( pPositionData + ((_z)*ny*nx + (_y)*nx + (_x)))->_attr)
 
+
+#define vpp2(_z) ((_z<210)?(5290000):(_z>=260?12250000:7840000))
+#define vss2(_z) ((_z<210)?(1517824):(_z>=260?3644281:2277081))
+
 typedef struct _POSITION_DATA{
     float u  ;
     float v  ;
@@ -147,18 +151,20 @@ int main(int argc, char **argv)
 
     PPOSITION_DATA pPositionData = (PPOSITION_DATA)malloc(sizeof(POSITION_DATA)*(long long)(nSize));
 
-    vpp     = (float*)malloc(sizeof(float)*nSize);
+//    vpp     = (float*)malloc(sizeof(float)*nSize);
     // density = (float*)malloc(sizeof(float)*nSize);
-    vss     = (float*)malloc(sizeof(float)*nSize);
+//    vss     = (float*)malloc(sizeof(float)*nSize);
     wave    = (float*)malloc(sizeof(float)*lt);
     up_out  = (float*)malloc(sizeof(float)*nx*ny);
 
     nshot=nxshot*nyshot;
     t0=1.0/frequency;
-    for(i=0;i<nz;i++)
+/*    for(i=0;i<nz;i++)
         for(j=0;j<ny;j++)
             for(k=0;k<nx;k++)
-            {
+            { 
+
+
                 int nIndex = POSITION_INDEX(i,j,k);
                 if(i<210)
                 {
@@ -179,7 +185,7 @@ int main(int argc, char **argv)
                     // density[nIndex]=2.5;
                 }
             }
-
+*/
     for(l=0;l<lt;l++)
     {
         tt=l*dt;
@@ -265,6 +271,17 @@ int main(int argc, char **argv)
 
             #pragma omp parallel for
             for(k=ntop;k<nbottom;k++)
+            {
+                vvp2=vpp2(k);
+                vvs2=vss2(k);
+
+                vvs2_dtz_dtz = vvs2*dtz*dtz;
+                vvp2_dtx_dtx = vvp2*dtx*dtx;
+                vvs2_dtx_dtx = vvs2*dtx*dtx;
+                vvp2_dtz_dtz = vvp2*dtz*dtz;
+                vvp2_dtz_dtx = vvp2*dtz*dtx;
+                vvs2_dtz_dtx = vvs2*dtz*dtx;
+
                 for(j=nfront;j<nback;j++)
                     for(i=nleft;i<nright;i++)
                     {
@@ -282,20 +299,6 @@ int main(int argc, char **argv)
                             px=0.;
                             sx=0.;
                         }
-                        vvp2=vpp[nIndex]*vpp[nIndex];
-                        drd1=dr1*vvp2;
-                        drd2=dr2*vvp2;
-
-                        vvs2=vss[nIndex]*vss[nIndex];
-                        drd1=dr1*vvs2;
-                        drd2=dr2*vvs2;
-
-                        vvs2_dtz_dtz = vvs2*dtz*dtz;
-                        vvp2_dtx_dtx = vvp2*dtx*dtx;
-                        vvs2_dtx_dtx = vvs2*dtx*dtx;
-                        vvp2_dtz_dtz = vvp2*dtz*dtz;
-                        vvp2_dtz_dtx = vvp2*dtz*dtx;
-                        vvs2_dtz_dtx = vvs2*dtz*dtx;
 
                         tempux2=0.0f;
                         tempuy2=0.0f;
@@ -421,6 +424,8 @@ int main(int argc, char **argv)
                                           +tempwx2+tempwy2
                                           -tempuxz*vvs2_dtz_dtx-tempvyz*vvs2_dtz_dtx;
                     }//for(i=nleft;i<nright;i++) end
+            }//for(k)
+            
 
             #pragma omp parallel for 
             for(k=ntop;k<nbottom;k++)
@@ -466,9 +471,6 @@ int main(int argc, char **argv)
 
     free(pPositionData);
 
-    free(vpp);
-    // free(density);
-    free(vss);
     free(wave);
     free(up_out);
 
