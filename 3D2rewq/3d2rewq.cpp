@@ -59,6 +59,9 @@ int main(int argc, char **argv)
     float xmax,px,sx;
     float vvp2,drd1,drd2,vvs2,tempux2,tempuy2,tempuz2,tempvx2,tempvy2,tempvz2,
           tempwx2,tempwy2,tempwz2,tempuxz,tempuxy,tempvyz,tempvxy,tempwxz,tempwyz;
+          
+    float _tempuxz,_tempuxy,_tempvyz,_tempvxy,_tempwxz,_tempwyz;
+    
     if(argc<4)
     {
         printf("please add 3 parameter: inpurfile, outfile, logfile\n");
@@ -142,7 +145,7 @@ int main(int argc, char **argv)
     const int nSize = nz*ny*nx;
     const int nSliceSize = ny*nx;
 
-    PPOSITION_DATA pPositionData = (PPOSITION_DATA)malloc(sizeof(POSITION_DATA)*(nSize));
+    PPOSITION_DATA pPositionData = (PPOSITION_DATA)malloc(sizeof(POSITION_DATA)*(long long)(nSize));
 
     vpp     = (float*)malloc(sizeof(float)*nSize);
     // density = (float*)malloc(sizeof(float)*nSize);
@@ -223,6 +226,8 @@ int main(int argc, char **argv)
     float vvp2_dtz_dtz;     
     float vvp2_dtz_dtx;     
     float vvs2_dtz_dtx;     
+
+    float current_c;
 
     fout=fopen(outfile,"wb");
     // shot is divided to cluster, MPI
@@ -339,41 +344,55 @@ int main(int argc, char **argv)
                         {
                             for(kkk=1;kkk<=mm;kkk++)
                             {
-                                tempuxz=tempuxz+c[kkk-1][1+kk]*(
-                                     POSITION_VALUE(k+kkk,j,i+kk,u)
-                                    -POSITION_VALUE(k-kkk,j,i+kk,u)
-                                    +POSITION_VALUE(k-kkk,j,i-kk,u)
-                                    -POSITION_VALUE(k+kkk,j,i-kk,u));
+                                current_c = c[kkk-1][1+kk];
 
-                                tempuxy=tempuxy+c[kkk-1][1+kk]*(
-                                     POSITION_VALUE(k,j+kkk,i+kk,u)
-                                    -POSITION_VALUE(k,j-kkk,i+kk,u)
-                                    +POSITION_VALUE(k,j-kkk,i-kk,u)
-                                    -POSITION_VALUE(k,j+kkk,i-kk,u));
-                                    
-                                tempvyz=tempvyz+c[kkk-1][1+kk]*(
-                                     POSITION_VALUE(k+kkk,j+kk,i,v)
-                                    -POSITION_VALUE(k-kkk,j+kk,i,v)
-                                    +POSITION_VALUE(k-kkk,j-kk,i,v)
-                                    -POSITION_VALUE(k+kkk,j-kk,i,v));
-                                    
-                                tempvxy=tempvxy+c[kkk-1][1+kk]*(
-                                     POSITION_VALUE(k,j+kkk,i+kk,v)
-                                    -POSITION_VALUE(k,j-kkk,i+kk,v)
-                                    +POSITION_VALUE(k,j-kkk,i-kk,v)
-                                    -POSITION_VALUE(k,j+kkk,i-kk,v));
-                                    
-                                tempwyz=tempwyz+c[kkk-1][1+kk]*(
-                                     POSITION_VALUE(k+kkk,j+kk,i,w)
-                                    -POSITION_VALUE(k-kkk,j+kk,i,w)
-                                    +POSITION_VALUE(k-kkk,j-kk,i,w)
-                                    -POSITION_VALUE(k+kkk,j-kk,i,w));
-                                    
-                                tempwxz=tempwxz+c[kkk-1][1+kk]*(
-                                     POSITION_VALUE(k+kkk,j,i+kk,w)
-                                    -POSITION_VALUE(k-kkk,j,i+kk,w)
-                                    +POSITION_VALUE(k-kkk,j,i-kk,w)
-                                    -POSITION_VALUE(k+kkk,j,i-kk,w));
+                                _tempuxz = POSITION_VALUE(k+kkk,j,i+kk,u);
+                                _tempwxz = POSITION_VALUE(k+kkk,j,i+kk,w);
+
+                                _tempuxy = POSITION_VALUE(k,j+kkk,i+kk,u);
+                                _tempvxy = POSITION_VALUE(k,j+kkk,i+kk,v);
+
+                                _tempvyz = POSITION_VALUE(k+kkk,j+kk,i,v);
+                                _tempwyz = POSITION_VALUE(k+kkk,j+kk,i,w);
+
+
+                                _tempuxz -= POSITION_VALUE(k-kkk,j,i+kk,u);
+                                _tempwxz -= POSITION_VALUE(k-kkk,j,i+kk,w);
+
+                                _tempuxy -= POSITION_VALUE(k,j-kkk,i+kk,u);
+                                _tempvxy -= POSITION_VALUE(k,j-kkk,i+kk,v);
+
+                                _tempvyz -= POSITION_VALUE(k-kkk,j+kk,i,v);
+                                _tempwyz -= POSITION_VALUE(k-kkk,j+kk,i,w);
+
+
+                                _tempuxz += POSITION_VALUE(k-kkk,j,i-kk,u);
+                                _tempwxz += POSITION_VALUE(k-kkk,j,i-kk,w);
+
+                                _tempuxy += POSITION_VALUE(k,j-kkk,i-kk,u);
+                                _tempvxy += POSITION_VALUE(k,j-kkk,i-kk,v);
+
+                                _tempvyz += POSITION_VALUE(k-kkk,j-kk,i,v);
+                                _tempwyz += POSITION_VALUE(k-kkk,j-kk,i,w);
+
+
+                                _tempuxz -= POSITION_VALUE(k+kkk,j,i-kk,u);
+                                _tempwxz -= POSITION_VALUE(k+kkk,j,i-kk,w);
+
+                                _tempuxy -= POSITION_VALUE(k,j+kkk,i-kk,u);
+                                _tempvxy -= POSITION_VALUE(k,j+kkk,i-kk,v);
+
+                                _tempvyz -= POSITION_VALUE(k+kkk,j-kk,i,v);
+                                _tempwyz -= POSITION_VALUE(k+kkk,j-kk,i,w);
+
+                                tempuxz = tempuxz + (current_c*_tempuxz);
+                                tempwxz = tempwxz + (current_c*_tempwxz);
+
+                                tempuxy = tempuxy + (current_c*_tempuxy);
+                                tempvxy = tempvxy + (current_c*_tempvxy);
+
+                                tempvyz = tempvyz + (current_c*_tempvyz);
+                                tempwyz = tempwyz + (current_c*_tempwyz);
 
                             } // for(kkk=1;kkk<=mm;kkk++) end
                         } //for(kk=1;kk<=mm;kk++) end
