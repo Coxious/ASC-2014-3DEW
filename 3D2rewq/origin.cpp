@@ -113,7 +113,7 @@ int main(int argc, char **argv)
     fprintf(flog,"unit=%f\n",unit);
     fprintf(flog,"dxshot=%d\n",dxshot);
     fprintf(flog,"dyshot=%d\n\n",dyshot);
-    fclose(flog);
+    // fclose(flog);
 
     u       = (float*)malloc(sizeof(float)*nz*ny*nx);
     v       = (float*)malloc(sizeof(float)*nz*ny*nx);
@@ -211,9 +211,9 @@ int main(int argc, char **argv)
     for(ishot=1;ishot<=nshot;ishot++)
     {
         printf("shot=%d\n",ishot);
-	flog = fopen(logfile,"a");
+	// flog = fopen(logfile,"a");
         fprintf(flog,"shot=%d\n",ishot);
-	fclose(flog);
+	// fclose(flog);
         ncy_shot=ncy_shot1+(ishot/nxshot)*dyshot;
         ncx_shot=ncx_shot1+(ishot%nxshot)*dxshot;
 
@@ -398,7 +398,7 @@ int main(int argc, char **argv)
                         ws1[k*ny*nx+j*nx+i]=ws[k*ny*nx+j*nx+i];
                     }//for(i=nleft;i<nright;i++) end
         }//for(l=1;l<=lt;l++) end
-        fwrite(up+169*ny*nx,sizeof(float),ny*nx,fout);
+        // fwrite(up+169*ny*nx,sizeof(float),ny*nx,fout);
     }//for(ishot=1;ishot<=nshot;ishot++) end
     fclose(fout);
 
@@ -431,7 +431,7 @@ int main(int argc, char **argv)
     gettimeofday(&end,NULL);
     all_time = (end.tv_sec-start.tv_sec)+(float)(end.tv_usec-start.tv_usec)/1000000.0;
     printf("run time:\t%f s\n",all_time);
-    flog = fopen(logfile,"a");
+    // flog = fopen(logfile,"a");
     fprintf(flog,"\nrun time:\t%f s\n\n",all_time);
     fclose(flog);
     flog = fopen(logfile,"a");

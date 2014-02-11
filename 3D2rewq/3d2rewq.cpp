@@ -13,9 +13,11 @@
 
 #define vpp2(_z) ((_z<210)?(5290000):(_z>=260?12250000:7840000))
 #define vss2(_z) ((_z<210)?(1517824):(_z>=260?3644281:2277081))
- 
+
 float *u_x, *v_x, *w_x, *u_y, *v_y, *w_y, *u_z, *v_z, *w_z, *up , *up1, *up2, *vp , *vp1, *vp2,
 		 *wp , *wp1, *wp2, *us , *us1, *us2, *vs , *vs1, *vs2, *ws , *ws1, *ws2, *swap_temp;
+
+float *debug_up,*debug_vp,*debug_wp,*debug_us,*debug_vs,*debug_ws;
 
 int main(int argc, char **argv)
 {
@@ -33,7 +35,7 @@ int main(int argc, char **argv)
 	FILE  *fin, *fout, *flog;
 	struct timeval start,end;
 	float all_time;
-
+	int px, sx;
 	float c[5][7];
 	float *wave;
 	float nshot,t0,tt,c0;
@@ -41,9 +43,9 @@ int main(int argc, char **argv)
 	float xmax;
 	float vvp2,vvs2,tempux2,tempuy2,tempuz2,tempvx2,tempvy2,tempvz2,
 		  tempwx2,tempwy2,tempwz2,tempuxz,tempuxy,tempvyz,tempvxy,tempwxz,tempwyz;
-		  
+
 	float _tempuxz,_tempuxy,_tempvyz,_tempvxy,_tempwxz,_tempwyz;
-	
+
 	if(argc<4)
 	{
 		printf("please add 3 parameter: inpurfile, outfile, logfile\n");
@@ -122,7 +124,7 @@ int main(int argc, char **argv)
 	fprintf(flog,"unit=%f\n",unit);
 	fprintf(flog,"dxshot=%d\n",dxshot);
 	fprintf(flog,"dyshot=%d\n\n",dyshot);
-	fclose(flog);
+	// fclose(flog);
 
 	const int nSize = nz*ny*nx;
 	const int nSliceSize = ny*nx;
@@ -137,25 +139,39 @@ int main(int argc, char **argv)
 	v_z = (float *) calloc(sizeof(float), nSize);
 	w_z = (float *) calloc(sizeof(float), nSize);
 	up  = (float *) calloc(sizeof(float), nSize);
-	up1 = (float *) calloc(sizeof(float), nSize); 
-	up2 = (float *) calloc(sizeof(float), nSize); 
+	up1 = (float *) calloc(sizeof(float), nSize);
+	up2 = (float *) calloc(sizeof(float), nSize);
 	vp  = (float *) calloc(sizeof(float), nSize);
 	vp1 = (float *) calloc(sizeof(float), nSize);
-	vp2 = (float *) calloc(sizeof(float), nSize); 
-	wp  = (float *) calloc(sizeof(float), nSize); 
-	wp1 = (float *) calloc(sizeof(float), nSize); 
-	wp2 = (float *) calloc(sizeof(float), nSize); 
+	vp2 = (float *) calloc(sizeof(float), nSize);
+	wp  = (float *) calloc(sizeof(float), nSize);
+	wp1 = (float *) calloc(sizeof(float), nSize);
+	wp2 = (float *) calloc(sizeof(float), nSize);
 	us  = (float *) calloc(sizeof(float), nSize);
-	us1 = (float *) calloc(sizeof(float), nSize); 
-	us2 = (float *) calloc(sizeof(float), nSize); 
-	vs  = (float *) calloc(sizeof(float), nSize); 
-	vs1 = (float *) calloc(sizeof(float), nSize); 
-	vs2 = (float *) calloc(sizeof(float), nSize); 
-	ws  = (float *) calloc(sizeof(float), nSize); 
-	ws1 = (float *) calloc(sizeof(float), nSize); 
-	ws2 = (float *) calloc(sizeof(float), nSize); 
+	us1 = (float *) calloc(sizeof(float), nSize);
+	us2 = (float *) calloc(sizeof(float), nSize);
+	vs  = (float *) calloc(sizeof(float), nSize);
+	vs1 = (float *) calloc(sizeof(float), nSize);
+	vs2 = (float *) calloc(sizeof(float), nSize);
+	ws  = (float *) calloc(sizeof(float), nSize);
+	ws1 = (float *) calloc(sizeof(float), nSize);
+	ws2 = (float *) calloc(sizeof(float), nSize);
 
 	wave    = (float*) calloc(sizeof(float), lt);
+
+
+	/////////////////////////////////////////////////////////////
+	//	Debug purpos code start
+
+	debug_up= (float *) calloc(sizeof(float), nSize);
+	debug_vp= (float *) calloc(sizeof(float), nSize);
+	debug_wp= (float *) calloc(sizeof(float), nSize);
+	debug_us= (float *) calloc(sizeof(float), nSize);
+	debug_vs= (float *) calloc(sizeof(float), nSize);
+	debug_ws= (float *) calloc(sizeof(float), nSize);
+
+	//	Debug purpos code end
+	/////////////////////////////////////////////////////////////
 
 	nshot=nxshot*nyshot;
 	t0=1.0/frequency;
@@ -191,12 +207,12 @@ int main(int argc, char **argv)
 	dtx=dt/unit;
 	dtz=dt/unit;
 
-	float vvp2_dtx_dtx;     
-	float vvs2_dtz_dtz;     
-	float vvs2_dtx_dtx;     
-	float vvp2_dtz_dtz;     
-	float vvp2_dtz_dtx;     
-	float vvs2_dtz_dtx;     
+	float vvp2_dtx_dtx;
+	float vvs2_dtz_dtz;
+	float vvs2_dtx_dtx;
+	float vvp2_dtz_dtz;
+	float vvp2_dtz_dtx;
+	float vvs2_dtz_dtx;
 
 	float current_c;
 	long long nIndex, nIndex_X, nIndex_Y, nIndex_Z;
@@ -206,9 +222,9 @@ int main(int argc, char **argv)
 	for(ishot=1;ishot<=nshot;ishot++)
 	{
 		printf("shot=%d\n",ishot);
-		flog = fopen(logfile,"a");
+		// flog = fopen(logfile,"a");
 		fprintf(flog,"shot=%d\n",ishot);
-		fclose(flog);
+		// fclose(flog);
 		ncy_shot=ncy_shot1+(ishot/nxshot)*dyshot;
 		ncx_shot=ncx_shot1+(ishot%nxshot)*dxshot;
 
@@ -234,8 +250,127 @@ int main(int argc, char **argv)
 			nleft = nleft-1;
 			// cout << ntop-nbottom << ' ' << nback-nfront << ' ' << nright-nleft << endl;
 
+
+	/////////////////////////////////////////////////////////////
+	//	Debug purpos code start
+            for(k=ntop;k<nbottom;k++)
+                for(j=nfront;j<nback;j++)
+                    for(i=nleft;i<nright;i++)
+                    {
+                        if(i==ncx_shot-1&&j==ncy_shot-1&&k==ncz_shot-1)
+                        {
+                            px=1.;
+                            sx=0.;
+                        }
+                        else
+                        {
+                            px=0.;
+                            sx=0.;
+                        }
+
+						vvp2=vpp2(k);
+						vvs2=vss2(k);
+
+
+                        tempux2=0.0f;
+                        tempuy2=0.0f;
+                        tempuz2=0.0f;
+                        tempvx2=0.0f;
+                        tempvy2=0.0f;
+                        tempvz2=0.0f;
+                        tempwx2=0.0f;
+                        tempwy2=0.0f;
+                        tempwz2=0.0f;
+                        tempuxz=0.0f;
+                        tempuxy=0.0f;
+                        tempvyz=0.0f;
+                        tempvxy=0.0f;
+                        tempwxz=0.0f;
+                        tempwyz=0.0f;
+                        for(kk=1;kk<=mm;kk++)
+                        {
+                            tempux2=tempux2+c[kk-1][0]*(u_x[k*ny*nx+j*nx+(i+kk)]+u_x[k*ny*nx+j*nx+(i-kk)]);
+                            tempuy2=tempuy2+c[kk-1][0]*(u_x[k*ny*nx+(j+kk)*nx+i]+u_x[k*ny*nx+(j-kk)*nx+i]);
+                            tempuz2=tempuz2+c[kk-1][0]*(u_x[(k+kk)*ny*nx+j*nx+i]+u_x[(k-kk)*ny*nx+j*nx+i]);
+
+                            tempvx2=tempvx2+c[kk-1][0]*(v_x[k*ny*nx+j*nx+(i+kk)]+v_x[k*ny*nx+j*nx+(i-kk)]);
+                            tempvy2=tempvy2+c[kk-1][0]*(v_x[k*ny*nx+(j+kk)*nx+i]+v_x[k*ny*nx+(j-kk)*nx+i]);
+                            tempvz2=tempvz2+c[kk-1][0]*(v_x[(k+kk)*ny*nx+j*nx+i]+v_x[(k-kk)*ny*nx+j*nx+i]);
+
+                            tempwx2=tempwx2+c[kk-1][0]*(w_x[k*ny*nx+j*nx+(i+kk)]+w_x[k*ny*nx+j*nx+(i-kk)]);
+                            tempwy2=tempwy2+c[kk-1][0]*(w_x[k*ny*nx+(j+kk)*nx+i]+w_x[k*ny*nx+(j-kk)*nx+i]);
+                            tempwz2=tempwz2+c[kk-1][0]*(w_x[(k+kk)*ny*nx+j*nx+i]+w_x[(k-kk)*ny*nx+j*nx+i]);
+
+                        } //for(kk=1;kk<=mm;kk++) end
+
+                        tempux2=(tempux2+c0*u_x[k*ny*nx+j*nx+i])*vvp2*dtx*dtx;
+                        tempuy2=(tempuy2+c0*u_x[k*ny*nx+j*nx+i])*vvs2*dtx*dtx;
+                        tempuz2=(tempuz2+c0*u_x[k*ny*nx+j*nx+i])*vvs2*dtz*dtz;
+
+                        tempvx2=(tempvx2+c0*v_x[k*ny*nx+j*nx+i])*vvs2*dtx*dtx;
+                        tempvy2=(tempvy2+c0*v_x[k*ny*nx+j*nx+i])*vvp2*dtx*dtx;
+                        tempvz2=(tempvz2+c0*v_x[k*ny*nx+j*nx+i])*vvs2*dtz*dtz;
+
+                        tempwx2=(tempwx2+c0*w_x[k*ny*nx+j*nx+i])*vvs2*dtx*dtx;
+                        tempwy2=(tempwy2+c0*w_x[k*ny*nx+j*nx+i])*vvs2*dtx*dtx;
+                        tempwz2=(tempwz2+c0*w_x[k*ny*nx+j*nx+i])*vvp2*dtz*dtz;
+
+                        for(kk=1;kk<=mm;kk++)
+                        {
+                            for(kkk=1;kkk<=mm;kkk++)
+                            {
+                                tempuxz=tempuxz+c[kkk-1][1+kk]*(u_x[(k+kkk)*ny*nx+j*nx+(i+kk)]
+                                                   -u_x[(k-kkk)*ny*nx+j*nx+(i+kk)]
+                                                   +u_x[(k-kkk)*ny*nx+j*nx+(i-kk)]
+                                                   -u_x[(k+kkk)*ny*nx+j*nx+(i-kk)]);
+                                tempuxy=tempuxy+c[kkk-1][1+kk]*(u_x[k*ny*nx+(j+kkk)*nx+(i+kk)]
+                                                   -u_x[k*ny*nx+(j-kkk)*nx+(i+kk)]
+                                                   +u_x[k*ny*nx+(j-kkk)*nx+(i-kk)]
+                                                   -u_x[k*ny*nx+(j+kkk)*nx+(i-kk)]);
+
+                                tempvyz=tempvyz+c[kkk-1][1+kk]*(v_x[(k+kkk)*ny*nx+(j+kk)*nx+i]
+                                                   -v_x[(k-kkk)*ny*nx+(j+kk)*nx+i]
+                                                   +v_x[(k-kkk)*ny*nx+(j-kk)*nx+i]
+                                                   -v_x[(k+kkk)*ny*nx+(j-kk)*nx+i]);
+                                tempvxy=tempvxy+c[kkk-1][1+kk]*(v_x[k*ny*nx+(j+kkk)*nx+(i+kk)]
+                                                   -v_x[k*ny*nx+(j-kkk)*nx+(i+kk)]
+                                                   +v_x[k*ny*nx+(j-kkk)*nx+(i-kk)]
+                                                   -v_x[k*ny*nx+(j+kkk)*nx+(i-kk)]);
+
+                                tempwyz=tempwyz+c[kkk-1][1+kk]*(w_x[(k+kkk)*ny*nx+(j+kk)*nx+i]
+                                                   -w_x[(k-kkk)*ny*nx+(j+kk)*nx+i]
+                                                   +w_x[(k-kkk)*ny*nx+(j-kk)*nx+i]
+                                                   -w_x[(k+kkk)*ny*nx+(j-kk)*nx+i]);
+                                tempwxz=tempwxz+c[kkk-1][1+kk]*(w_x[(k+kkk)*ny*nx+j*nx+(i+kk)]
+                                                   -w_x[(k-kkk)*ny*nx+j*nx+(i+kk)]
+                                                   +w_x[(k-kkk)*ny*nx+j*nx+(i-kk)]
+                                                   -w_x[(k+kkk)*ny*nx+j*nx+(i-kk)]);
+                            } // for(kkk=1;kkk<=mm;kkk++) end
+                        } //for(kk=1;kk<=mm;kk++) end
+                        debug_up[k*ny*nx+j*nx+i]=2.*up1[k*ny*nx+j*nx+i]-up2[k*ny*nx+j*nx+i]
+                                          +tempux2+tempwxz*vvp2*dtz*dtx
+                                          +tempvxy*vvp2*dtz*dtx;
+                        debug_vp[k*ny*nx+j*nx+i]=2.*vp1[k*ny*nx+j*nx+i]-vp2[k*ny*nx+j*nx+i]
+                                          +tempvy2+tempuxy*vvp2*dtz*dtx
+                                          +tempwyz*vvp2*dtz*dtx;
+                        debug_wp[k*ny*nx+j*nx+i]=2.*wp1[k*ny*nx+j*nx+i]-wp2[k*ny*nx+j*nx+i]
+                                          +tempwz2+tempuxz*vvp2*dtz*dtx
+                                          +tempvyz*vvp2*dtz*dtx
+                                          +px*wave[l-1];
+                        debug_us[k*ny*nx+j*nx+i]=2.*us1[k*ny*nx+j*nx+i]-us2[k*ny*nx+j*nx+i]+tempuy2+tempuz2
+                                          -tempvxy*vvs2*dtz*dtx-tempwxz*vvs2*dtz*dtx;
+                        debug_vs[k*ny*nx+j*nx+i]=2.*vs1[k*ny*nx+j*nx+i]-vs2[k*ny*nx+j*nx+i]+tempvx2+tempvz2
+                                          -tempuxy*vvs2*dtz*dtx-tempwyz*vvs2*dtz*dtx;
+                        debug_ws[k*ny*nx+j*nx+i]=2.*ws1[k*ny*nx+j*nx+i]-ws2[k*ny*nx+j*nx+i]+tempwx2+tempwy2
+                                          -tempuxz*vvs2*dtz*dtx-tempvyz*vvs2*dtz*dtx;
+                    }//for(i=nleft;i<nright;i++) end
+	//	Debug purpos code end
+	/////////////////////////////////////////////////////////////
+
+
+
 			// #pragma omp parallel for
-			// Z Y X            
+			// Z Y X
 			for ( k=ntop; k<nbottom; k++ ) {
 
 				vvp2=vpp2(k);
@@ -264,7 +399,7 @@ int main(int argc, char **argv)
 						tempvx2 *= vvs2_dtx_dtx;
 						tempwx2 *= vvs2_dtx_dtx;
 
-						tempuxy = 0.0；
+						tempuxy = 0.0;
 						tempvxy = 0.0;
 
 						for(kkk=1;kkk<=mm;kkk++)
@@ -295,7 +430,7 @@ int main(int argc, char **argv)
 						us[nIndex] = -tempvxy*vvs2_dtz_dtx;
 						vs[nIndex] = tempvx2-tempuxy*vvs2_dtz_dtx;
 						ws[nIndex] = tempwx2;
-					}   
+					}
 				}
 			}
 			// X Z Y
@@ -325,12 +460,12 @@ int main(int argc, char **argv)
 							tempwy2=tempwy2+c[kk-1][0]*(w_y[POSITION_INDEX_Y(i, k, j+kk)]+w_y[POSITION_INDEX_Y(i, k, j-kk)]);
 						} //for(kk=1;kk<=mm;kk++) end
 
-						tempuy2 *= vvs2_dtx_dtx;    
+						tempuy2 *= vvs2_dtx_dtx;
 						tempvy2 *= vvp2_dtx_dtx;
 						tempwy2 *= vvs2_dtx_dtx;
 
-						tempuyz = 0.0；
 						tempvyz = 0.0;
+						tempwyz = 0.0;
 
 						for(kkk=1;kkk<=mm;kkk++)
 						{
@@ -340,16 +475,16 @@ int main(int argc, char **argv)
 
 								_tempvyz  = v_y[POSITION_INDEX_Y(k+kkk,j+kk,i)];
 								_tempwyz  = w_y[POSITION_INDEX_Y(k+kkk,j+kk,i)];
-								
+
 								_tempvyz -= v_y[POSITION_INDEX_Y(k-kkk,j+kk,i)];
 								_tempwyz -= w_y[POSITION_INDEX_Y(k-kkk,j+kk,i)];
-								
+
 								_tempvyz += v_y[POSITION_INDEX_Y(k-kkk,j-kk,i)];
 								_tempwyz += w_y[POSITION_INDEX_Y(k-kkk,j-kk,i)];
 
 								_tempvyz -= v_y[POSITION_INDEX_Y(k+kkk,j-kk,i)];
 								_tempwyz -= w_y[POSITION_INDEX_Y(k+kkk,j-kk,i)];
-							
+
 								tempvyz += current_c*_tempvyz;
 								tempwyz += current_c*_tempwyz;
 							}
@@ -392,12 +527,12 @@ int main(int argc, char **argv)
 							tempwz2=tempwz2+c[kk-1][0]*(w_z[POSITION_INDEX_Z(j, i, k+kk)]+w_z[POSITION_INDEX_Z(j, i, k-kk)]);
 						}
 
-						tempuz2 *= vvs2_dtz_dtz;    
+						tempuz2 *= vvs2_dtz_dtz;
 						tempvz2 *= vvs2_dtz_dtz;
 						tempwz2 *= vvp2_dtz_dtz;
 
-						tempuxz = 0.0；
-						tempvxz = 0.0;
+						tempuxz = 0.0;
+						tempwxz = 0.0;
 
 						for(kk=1;kk<=mm;kk++)
 						{
@@ -409,10 +544,10 @@ int main(int argc, char **argv)
 
 								_tempuxz -= u_z[POSITION_INDEX_Z(k-kkk,j,i+kk)];
 								_tempwxz -= w_z[POSITION_INDEX_Z(k-kkk,j,i+kk)];
-								
+
 								_tempuxz += u_z[POSITION_INDEX_Z(k-kkk,j,i-kk)];
 								_tempwxz += w_z[POSITION_INDEX_Z(k-kkk,j,i-kk)];
-								
+
 								_tempuxz -= u_z[POSITION_INDEX_Z(k+kkk,j,i-kk)];
 								_tempwxz -= w_z[POSITION_INDEX_Z(k+kkk,j,i-kk)];
 
@@ -431,27 +566,36 @@ int main(int argc, char **argv)
 						nIndex_X += nSliceSize;
 					}
 				}
-			}			
+			}
 
 			int nIndex_X = POSITION_INDEX_X(ntop, nfront, nleft);
 
-			// #pragma omp parallel for 
+			// #pragma omp parallel for
 			for(k=ntop;k<nbottom;k++) {
 				for(j=nfront;j<nback;j++) {
 					for(i=nleft;i<nright;i++) {
-
 						u_x[nIndex] = 2*up1[nIndex] - up2[nIndex] + up[nIndex] + 2*us1[nIndex] - us2[nIndex] + us[nIndex];
 						v_x[nIndex] = 2*vp1[nIndex] - vp2[nIndex] + vp[nIndex] + 2*vs1[nIndex] - vs2[nIndex] + vs[nIndex];
 						w_x[nIndex] = 2*wp1[nIndex] - wp2[nIndex] + wp[nIndex] + 2*ws1[nIndex] - ws2[nIndex] + ws[nIndex];
-
 						nIndex++;
+
+
+
+	/////////////////////////////////////////////////////////////
+	//	Debug purpos code start
+	                    if(up[k*ny*nx+j*nx+i]+us[k*ny*nx+j*nx+i] - u_x[nIndex] > 1e-6) { printf("[Warining] lt: %d nIndex:%d index: %d k: %d j: %d i: %d", lt, nIndex, k*ny*nx+j*nx+i, k, j, i);} //u[k*ny*nx+j*nx+i]=
+                        if(vp[k*ny*nx+j*nx+i]+vs[k*ny*nx+j*nx+i] - v_x[nIndex] > 1e-6) { printf("[Warining] lt: %d nIndex:%d index: %d k: %d j: %d i: %d", lt, nIndex, k*ny*nx+j*nx+i, k, j, i);} //v[k*ny*nx+j*nx+i]=
+                        if(wp[k*ny*nx+j*nx+i]+ws[k*ny*nx+j*nx+i] - w_x[nIndex] > 1e-6) { printf("[Warining] lt: %d nIndex:%d index: %d k: %d j: %d i: %d", lt, nIndex, k*ny*nx+j*nx+i, k, j, i);} //w[k*ny*nx+j*nx+i]=
+
+	//	Debug purpos code end
+	/////////////////////////////////////////////////////////////
 					}//for(i=nleft;i<nright;i++) end
-					nIndex += nx+nleft-nright; 
+					nIndex += nx+nleft-nright;
 				}
 				nIndex+=nx*(ny + nfront - nback);
 			}
 
-//			#pragma omp parallel for 
+//			#pragma omp parallel for
 			for(k=ntop;k<nbottom;k++) {
 				for(j=nfront;j<nback;j++) {
 					for(i=nleft;i<nright;i++) {
@@ -471,7 +615,7 @@ int main(int argc, char **argv)
 
 		}//for(l=1;l<=lt;l++) end
 
-		fwrite(up+POSITION_INDEX_X(169,0,0),sizeof(float),nSliceSize,fout);
+		// fwrite(up+POSITION_INDEX_X(169,0,0),sizeof(float),nSliceSize,fout);
 	}//for(ishot=1;ishot<=nshot;ishot++) end
 	fclose(fout);
 
@@ -486,29 +630,29 @@ int main(int argc, char **argv)
 	free(v_z);
 	free(w_z);
 	free(up );
-	free(up1); 
-	free(up2); 
+	free(up1);
+	free(up2);
 	free(vp );
 	free(vp1);
-	free(vp2); 
-	free(wp ); 
-	free(wp1); 
-	free(wp2); 
+	free(vp2);
+	free(wp );
+	free(wp1);
+	free(wp2);
 	free(us );
-	free(us1); 
-	free(us2); 
-	free(vs ); 
-	free(vs1); 
-	free(vs2); 
-	free(ws ); 
-	free(ws1); 
-	free(ws2); 
+	free(us1);
+	free(us2);
+	free(vs );
+	free(vs1);
+	free(vs2);
+	free(ws );
+	free(ws1);
+	free(ws2);
 	free(wave);
 
 	gettimeofday(&end,NULL);
 	all_time = (end.tv_sec-start.tv_sec)+(float)(end.tv_usec-start.tv_usec)/1000000.0;
 	printf("run time:\t%f s\n",all_time);
-	flog = fopen(logfile,"a");
+	// flog = fopen(logfile,"a");
 	fprintf(flog,"\nrun time:\t%f s\n\n",all_time);
 	fclose(flog);
 	flog = fopen(logfile,"a");
