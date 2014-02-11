@@ -234,7 +234,7 @@ int main(int argc, char **argv)
 			nleft = nleft-1;
 			// cout << ntop-nbottom << ' ' << nback-nfront << ' ' << nright-nleft << endl;
 
-			#pragma omp parallel for
+			// #pragma omp parallel for
 			// Z Y X            
 			for ( k=ntop; k<nbottom; k++ ) {
 
@@ -263,6 +263,9 @@ int main(int argc, char **argv)
 						tempux2 *= vvp2_dtx_dtx;
 						tempvx2 *= vvs2_dtx_dtx;
 						tempwx2 *= vvs2_dtx_dtx;
+
+						tempuxy = 0.0；
+						tempvxy = 0.0;
 
 						for(kkk=1;kkk<=mm;kkk++)
 						{
@@ -325,6 +328,9 @@ int main(int argc, char **argv)
 						tempuy2 *= vvs2_dtx_dtx;    
 						tempvy2 *= vvp2_dtx_dtx;
 						tempwy2 *= vvs2_dtx_dtx;
+
+						tempuyz = 0.0；
+						tempvyz = 0.0;
 
 						for(kkk=1;kkk<=mm;kkk++)
 						{
@@ -390,6 +396,9 @@ int main(int argc, char **argv)
 						tempvz2 *= vvs2_dtz_dtz;
 						tempwz2 *= vvp2_dtz_dtz;
 
+						tempuxz = 0.0；
+						tempvxz = 0.0;
+
 						for(kk=1;kk<=mm;kk++)
 						{
 							for(kkk=1;kkk<=mm;kkk++)
@@ -426,7 +435,7 @@ int main(int argc, char **argv)
 
 			int nIndex_X = POSITION_INDEX_X(ntop, nfront, nleft);
 
-			#pragma omp parallel for 
+			// #pragma omp parallel for 
 			for(k=ntop;k<nbottom;k++) {
 				for(j=nfront;j<nback;j++) {
 					for(i=nleft;i<nright;i++) {
@@ -442,7 +451,7 @@ int main(int argc, char **argv)
 				nIndex+=nx*(ny + nfront - nback);
 			}
 
-			#pragma omp parallel for 
+//			#pragma omp parallel for 
 			for(k=ntop;k<nbottom;k++) {
 				for(j=nfront;j<nback;j++) {
 					for(i=nleft;i<nright;i++) {
@@ -456,7 +465,6 @@ int main(int argc, char **argv)
 				}
 			}
 
-
 			swap_temp = up2; up2 = up1; up1 = up; up = swap_temp;
 			swap_temp = vp2; vp2 = vp1; vp1 = vp; vp = swap_temp;
 			swap_temp = wp2; wp2 = wp1; wp1 = wp; wp = swap_temp;
@@ -468,6 +476,7 @@ int main(int argc, char **argv)
 	fclose(fout);
 
 	free(u_x);
+
 	free(v_x);
 	free(w_x);
 	free(u_y);
