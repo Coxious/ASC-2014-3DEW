@@ -227,6 +227,7 @@ int main(int argc, char **argv)
 		// fclose(flog);
 		ncy_shot=ncy_shot1+(ishot/nxshot)*dyshot;
 		ncx_shot=ncx_shot1+(ishot%nxshot)*dxshot;
+		printf("x: %d, y: %d, z: %d", ncx_shot, ncy_shot, ncz_shot);
 
 
 		for(l=1;l<=lt;l++)
@@ -453,11 +454,9 @@ int main(int argc, char **argv)
 
 						for(kk=1;kk<=mm;kk++)
 						{
-							tempuy2=tempuy2+c[kk-1][0]*(u_y[POSITION_INDEX_Y(i, k, j+kk)]+u_y[POSITION_INDEX_Y(i, k, j-kk)]);
-
-							tempvy2=tempvy2+c[kk-1][0]*(v_y[POSITION_INDEX_Y(i, k, j+kk)]+v_y[POSITION_INDEX_Y(i, k, j-kk)]);
-
-							tempwy2=tempwy2+c[kk-1][0]*(w_y[POSITION_INDEX_Y(i, k, j+kk)]+w_y[POSITION_INDEX_Y(i, k, j-kk)]);
+							tempuy2=tempuy2+c[kk-1][0]*(u_y[POSITION_INDEX_Y(k, j+kk, i)]+u_y[POSITION_INDEX_Y(k, j-kk, i)]);
+							tempvy2=tempvy2+c[kk-1][0]*(v_y[POSITION_INDEX_Y(k, j+kk, i)]+v_y[POSITION_INDEX_Y(k, j-kk, i)]);
+							tempwy2=tempwy2+c[kk-1][0]*(w_y[POSITION_INDEX_Y(k, j+kk, i)]+w_y[POSITION_INDEX_Y(k, j-kk, i)]);
 						} //for(kk=1;kk<=mm;kk++) end
 
 						tempuy2 *= vvs2_dtx_dtx;
@@ -492,7 +491,7 @@ int main(int argc, char **argv)
 
 						vp[nIndex_X] += tempvy2 + tempwyz*vvp2_dtz_dtx;
 						us[nIndex_X] += tempuy2;
-						wp[nIndex_X]  = +tempvyz*vvp2_dtz_dtx;
+						wp[nIndex_X]  = tempvyz*vvp2_dtz_dtx;
 						vs[nIndex_X] -= tempwyz*vvs2_dtz_dtx;
 						ws[nIndex_X] += tempwy2	- tempvyz*vvs2_dtz_dtx;
 
@@ -504,8 +503,8 @@ int main(int argc, char **argv)
 			// Y X Z
 			for ( j=nfront; j<nback; j++ ) {
 				for ( i=nleft; i<nright; i++ ) {
-					nIndex 		= POSITION_INDEX_Z(ntop, i, j);
-					nIndex_X 	= POSITION_INDEX_X(ntop, i, j);
+					nIndex 		= POSITION_INDEX_Z(ntop, j, i);
+					nIndex_X 	= POSITION_INDEX_X(ntop, j, i);
 					for ( k=ntop; k<nbottom; k++ ) {
 						vvp2=vpp2(k);
 						vvs2=vss2(k);
@@ -520,11 +519,11 @@ int main(int argc, char **argv)
 						tempwz2 = c0*w_z[nIndex];
 						for(kk=1;kk<=mm;kk++)
 						{
-							tempuz2=tempuz2+c[kk-1][0]*(u_z[POSITION_INDEX_Z(j, i, k+kk)]+u_z[POSITION_INDEX_Z(j, i, k-kk)]);
+							tempuz2=tempuz2+c[kk-1][0]*(u_z[POSITION_INDEX_Z(k+kk, j, i)]+u_z[POSITION_INDEX_Z(k-kk, j, i)]);
 
-							tempvz2=tempvz2+c[kk-1][0]*(v_z[POSITION_INDEX_Z(j, i, k+kk)]+v_z[POSITION_INDEX_Z(j, i, k-kk)]);
+							tempvz2=tempvz2+c[kk-1][0]*(v_z[POSITION_INDEX_Z(k+kk, j, i)]+v_z[POSITION_INDEX_Z(k-kk, j, i)]);
 
-							tempwz2=tempwz2+c[kk-1][0]*(w_z[POSITION_INDEX_Z(j, i, k+kk)]+w_z[POSITION_INDEX_Z(j, i, k-kk)]);
+							tempwz2=tempwz2+c[kk-1][0]*(w_z[POSITION_INDEX_Z(k+kk, j, i)]+w_z[POSITION_INDEX_Z(k-kk, j, i)]);
 						}
 
 						tempuz2 *= vvs2_dtz_dtz;
@@ -557,11 +556,16 @@ int main(int argc, char **argv)
 						} //for(kk=1;kk<=mm;kk++) end
 
 						up[nIndex_X] += tempwxz*vvp2_dtz_dtx;
-						wp[nIndex_X] += tempwz2+tempuxz*vvp2_dtz_dtx +(i==ncx_shot-1&&j==ncy_shot-1&&k==ncz_shot-1)*wave[l-1];
+						wp[nIndex_X] += tempwz2+tempuxz*vvp2_dtz_dtx +(int)(i==ncx_shot-1&&j==ncy_shot-1&&k==ncz_shot-1)*wave[l-1];
 						us[nIndex_X] += tempuz2 - tempwxz*vvs2_dtz_dtx;
 						vs[nIndex_X] += tempvz2;
 						ws[nIndex_X] -= tempuxz*vvs2_dtz_dtx;
 
+	/////////////////////////////////////////////////////////////
+	//	Debug purpos code start
+						if(nIndex_X != POSITION_INDEX_X(k,j,i)){printf("[Warining] Index X : %d does not match %d.\n",nIndex_X,POSITION_INDEX_X(k,j,i));}
+	//	Debug purpos code end
+	/////////////////////////////////////////////////////////////
 						nIndex++;
 						nIndex_X += nSliceSize;
 					}
@@ -595,19 +599,19 @@ int main(int argc, char **argv)
 						u_x[nIndex] = 2*up1[nIndex] - up2[nIndex] + up[nIndex] + 2*us1[nIndex] - us2[nIndex] + us[nIndex];
 						v_x[nIndex] = 2*vp1[nIndex] - vp2[nIndex] + vp[nIndex] + 2*vs1[nIndex] - vs2[nIndex] + vs[nIndex];
 						w_x[nIndex] = 2*wp1[nIndex] - wp2[nIndex] + wp[nIndex] + 2*ws1[nIndex] - ws2[nIndex] + ws[nIndex];
-						nIndex++;
 
 
 
 	/////////////////////////////////////////////////////////////
 	//	Debug purpos code start
-	        float diff;            
-			if((diff = up[k*ny*nx+j*nx+i]+us[k*ny*nx+j*nx+i] - u_x[nIndex]) > 1) { printf("[Warining U] l: %d nIndex:%d index: %d k: %d j: %d i: %d diff: %f\n", l, nIndex, k*ny*nx+j*nx+i, k, j, i, diff);} //u[k*ny*nx+j*nx+i]=
-                        if((diff = vp[k*ny*nx+j*nx+i]+vs[k*ny*nx+j*nx+i] - v_x[nIndex]) > 1) { printf("[Warining V] l: %d nIndex:%d index: %d k: %d j: %d i: %d diff: %f\n", l, nIndex, k*ny*nx+j*nx+i, k, j, i, diff);} //v[k*ny*nx+j*nx+i]=
-                        if((diff = wp[k*ny*nx+j*nx+i]+ws[k*ny*nx+j*nx+i]) - w_x[nIndex] > 1) { printf("[Warining W] l: %d nIndex:%d index: %d k: %d j: %d i: %d diff: %f\n", l, nIndex, k*ny*nx+j*nx+i, k, j, i, diff);} //w[k*ny*nx+j*nx+i]=
+	        float diff;
+						if((diff = up[k*ny*nx+j*nx+i]+us[k*ny*nx+j*nx+i] - u_x[nIndex]) > 1e-6) { printf("[Warining U] l: %d nIndex:%d index: %d k: %d j: %d i: %d diff: %f\n", l, nIndex, k*ny*nx+j*nx+i, k, j, i, diff);} //u[k*ny*nx+j*nx+i]=
+                        if((diff = vp[k*ny*nx+j*nx+i]+vs[k*ny*nx+j*nx+i] - v_x[nIndex]) > 1e-6) { printf("[Warining V] l: %d nIndex:%d index: %d k: %d j: %d i: %d diff: %f\n", l, nIndex, k*ny*nx+j*nx+i, k, j, i, diff);} //v[k*ny*nx+j*nx+i]=
+                        if((diff = wp[k*ny*nx+j*nx+i]+ws[k*ny*nx+j*nx+i] - w_x[nIndex]) > 1e-6) { printf("[Warining W] l: %d nIndex:%d index: %d k: %d j: %d i: %d diff: %f\n", l, nIndex, k*ny*nx+j*nx+i, k, j, i, diff);} //w[k*ny*nx+j*nx+i]=
 
 	//	Debug purpos code end
 	/////////////////////////////////////////////////////////////
+						nIndex++;
 					}//for(i=nleft;i<nright;i++) end
 					nIndex += nx+nleft-nright;
 				}
