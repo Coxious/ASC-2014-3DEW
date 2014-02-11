@@ -570,7 +570,25 @@ int main(int argc, char **argv)
 
 			int nIndex_X = POSITION_INDEX_X(ntop, nfront, nleft);
 
+//	/////////////////////////////////////////////////////////////
+//	//	Debug purpos code start
+//			nIndex = POSITION_INDEX_X(ntop, nfront, nleft);
+//			for(k=ntop;k<nbottom;k++) {
+//				for(j=nfront;j<nback;j++) {
+//					for(i=nleft;i<nright;i++) {
+//						printf("nIndex: %d, index:%d\n", nIndex, k*ny*nx+j*nx+i);
+//						nIndex++;
+//
+//					}//for(i=nleft;i<nright;i++) end
+//					nIndex += nx+nleft-nright;
+//				}
+//				nIndex+=nx*(ny + nfront - nback);
+//			}
+//
+//	//	Debug purpos code end
+//	/////////////////////////////////////////////////////////////
 			// #pragma omp parallel for
+			nIndex = POSITION_INDEX_X(ntop, nfront, nleft);
 			for(k=ntop;k<nbottom;k++) {
 				for(j=nfront;j<nback;j++) {
 					for(i=nleft;i<nright;i++) {
@@ -583,9 +601,10 @@ int main(int argc, char **argv)
 
 	/////////////////////////////////////////////////////////////
 	//	Debug purpos code start
-	                    if(up[k*ny*nx+j*nx+i]+us[k*ny*nx+j*nx+i] - u_x[nIndex] > 1e-6) { printf("[Warining] lt: %d nIndex:%d index: %d k: %d j: %d i: %d", lt, nIndex, k*ny*nx+j*nx+i, k, j, i);} //u[k*ny*nx+j*nx+i]=
-                        if(vp[k*ny*nx+j*nx+i]+vs[k*ny*nx+j*nx+i] - v_x[nIndex] > 1e-6) { printf("[Warining] lt: %d nIndex:%d index: %d k: %d j: %d i: %d", lt, nIndex, k*ny*nx+j*nx+i, k, j, i);} //v[k*ny*nx+j*nx+i]=
-                        if(wp[k*ny*nx+j*nx+i]+ws[k*ny*nx+j*nx+i] - w_x[nIndex] > 1e-6) { printf("[Warining] lt: %d nIndex:%d index: %d k: %d j: %d i: %d", lt, nIndex, k*ny*nx+j*nx+i, k, j, i);} //w[k*ny*nx+j*nx+i]=
+	        float diff;            
+			if((diff = up[k*ny*nx+j*nx+i]+us[k*ny*nx+j*nx+i] - u_x[nIndex]) > 1) { printf("[Warining U] l: %d nIndex:%d index: %d k: %d j: %d i: %d diff: %f\n", l, nIndex, k*ny*nx+j*nx+i, k, j, i, diff);} //u[k*ny*nx+j*nx+i]=
+                        if((diff = vp[k*ny*nx+j*nx+i]+vs[k*ny*nx+j*nx+i] - v_x[nIndex]) > 1) { printf("[Warining V] l: %d nIndex:%d index: %d k: %d j: %d i: %d diff: %f\n", l, nIndex, k*ny*nx+j*nx+i, k, j, i, diff);} //v[k*ny*nx+j*nx+i]=
+                        if((diff = wp[k*ny*nx+j*nx+i]+ws[k*ny*nx+j*nx+i]) - w_x[nIndex] > 1) { printf("[Warining W] l: %d nIndex:%d index: %d k: %d j: %d i: %d diff: %f\n", l, nIndex, k*ny*nx+j*nx+i, k, j, i, diff);} //w[k*ny*nx+j*nx+i]=
 
 	//	Debug purpos code end
 	/////////////////////////////////////////////////////////////
