@@ -14,7 +14,7 @@
 #define vpp2(_z) ((_z<210)?(5290000):(_z>=260?12250000:7840000))
 #define vss2(_z) ((_z<210)?(1517824):(_z>=260?3644281:2277081))
  
-float *u_x; *v_x, *w_x, *u_y, *v_y, *w_y, *u_z, *v_z, *w_z, *up , *up1, *up2, *vp , *vp1, *vp2,
+float *u_x, *v_x, *w_x, *u_y, *v_y, *w_y, *u_z, *v_z, *w_z, *up , *up1, *up2, *vp , *vp1, *vp2,
 		 *wp , *wp1, *wp2, *us , *us1, *us2, *vs , *vs1, *vs2, *ws , *ws1, *ws2, *swap_temp;
 
 int main(int argc, char **argv)
@@ -34,13 +34,12 @@ int main(int argc, char **argv)
 	struct timeval start,end;
 	float all_time;
 
-	float *vpp, /* *density,**/ *vss ,*up_out;
 	float c[5][7];
 	float *wave;
 	float nshot,t0,tt,c0;
-	float dtx,dtz,dtxz;
-	float xmax,px;
-	float vvp2,drd1,drd2,vvs2,tempux2,tempuy2,tempuz2,tempvx2,tempvy2,tempvz2,
+	float dtx,dtz;
+	float xmax;
+	float vvp2,vvs2,tempux2,tempuy2,tempuz2,tempvx2,tempvy2,tempvz2,
 		  tempwx2,tempwy2,tempwz2,tempuxz,tempuxy,tempvyz,tempvxy,tempwxz,tempwyz;
 		  
 	float _tempuxz,_tempuxy,_tempvyz,_tempvxy,_tempwxz,_tempwyz;
@@ -157,7 +156,6 @@ int main(int argc, char **argv)
 	ws2 = (float *) calloc(sizeof(float), nSize); 
 
 	wave    = (float*) calloc(sizeof(float), lt);
-	up_out  = (float*) calloc(sizeof(float), nx*ny);
 
 	nshot=nxshot*nyshot;
 	t0=1.0/frequency;
@@ -192,7 +190,6 @@ int main(int argc, char **argv)
 
 	dtx=dt/unit;
 	dtz=dt/unit;
-	dtxz=dtx*dtz;
 
 	float vvp2_dtx_dtx;     
 	float vvs2_dtz_dtz;     
@@ -202,7 +199,7 @@ int main(int argc, char **argv)
 	float vvs2_dtz_dtx;     
 
 	float current_c;
-	long long nIndex_X, nIndex_Y, nIndex_Z;
+	long long nIndex, nIndex_X, nIndex_Y, nIndex_Z;
 
 	fout=fopen(outfile,"wb");
 	// shot is divided to cluster, MPI
@@ -254,7 +251,7 @@ int main(int argc, char **argv)
 						nIndex++;
 						tempux2 = c0*u_x[nIndex];
 						tempvx2 = c0*v_x[nIndex];
-						tempzx2 = c0*z_x[nIndex];
+						tempwx2 = c0*w_x[nIndex];
 						for(kk=1;kk<=mm;kk++)
 						{
 							tempux2=tempux2+c[kk-1][0]*(u_x[POSITION_INDEX_X(k,j,i+kk)]+u_x[POSITION_INDEX_X(k,j,i-kk)]);
@@ -293,7 +290,7 @@ int main(int argc, char **argv)
 						up[nIndex] = tempux2+tempvxy*vvs2_dtz_dtx;
 						vp[nIndex] = tempuxy;
 						us[nIndex] = -tempvxy*vvs2_dtz_dtx;
-						vs[nIndex] = tmpvx2-tempuxy*vvs2_dtz_dtx;
+						vs[nIndex] = tempvx2-tempuxy*vvs2_dtz_dtx;
 						ws[nIndex] = tempwx2;
 					}   
 				}
@@ -314,7 +311,7 @@ int main(int argc, char **argv)
 					for ( j=nfront; j<nback; j++ ) {
 						tempuy2 = c0*u_y[nIndex];
 						tempvy2 = c0*v_y[nIndex];
-						tempzy2 = c0*z_y[nIndex];
+						tempwy2 = c0*w_y[nIndex];
 
 						for(kk=1;kk<=mm;kk++)
 						{
@@ -354,7 +351,7 @@ int main(int argc, char **argv)
 
 						vp[nIndex_X] += tempvy2 + tempwyz*vvp2_dtz_dtx;
 						us[nIndex_X] += tempuy2;
-						wp[nIndex_X]  = +tempvyz*vvp2_dtz_dtx
+						wp[nIndex_X]  = +tempvyz*vvp2_dtz_dtx;
 						vs[nIndex_X] -= tempwyz*vvs2_dtz_dtx;
 						ws[nIndex_X] += tempwy2	- tempvyz*vvs2_dtz_dtx;
 
@@ -379,7 +376,7 @@ int main(int argc, char **argv)
 
 						tempuz2 = c0*u_z[nIndex];
 						tempvz2 = c0*v_z[nIndex];
-						tempzz2 = c0*z_z[nIndex];
+						tempwz2 = c0*w_z[nIndex];
 						for(kk=1;kk<=mm;kk++)
 						{
 							tempuz2=tempuz2+c[kk-1][0]*(u_z[POSITION_INDEX_Z(j, i, k+kk)]+u_z[POSITION_INDEX_Z(j, i, k-kk)]);
@@ -466,7 +463,7 @@ int main(int argc, char **argv)
 
 		}//for(l=1;l<=lt;l++) end
 
-		fwrite(up[POSITION_INDEX_X(169,0,0)],sizeof(float),nSliceSize,fout);
+		fwrite(up+POSITION_INDEX_X(169,0,0),sizeof(float),nSliceSize,fout);
 	}//for(ishot=1;ishot<=nshot;ishot++) end
 	fclose(fout);
 
