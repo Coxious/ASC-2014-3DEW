@@ -577,7 +577,7 @@ int main(int argc, char **argv)
 						tempux2 *= vvp2_dtx_dtx;
 						tempvx2 *= vvs2_dtx_dtx;
 						tempwx2 *= vvs2_dtx_dtx;
-#ifdef _DEBUG_TEST
+#ifdef _DEBUG_LEVEL_2
 	/////////////////////////////////////////////////////////////
 	//	Debug purpose code start
 						float debug_tempux2 = 0;
@@ -585,16 +585,16 @@ int main(int argc, char **argv)
 						float debug_tempwx2 = 0;
 						for(kk=1;kk<=mm;kk++)
 						{
-							debug_tempux2=debug_tempux2+c[kk-1][0]*(u_x[k*ny*nx+j*nx+(i+kk)]+u_x[k*ny*nx+j*nx+(i-kk)]);
+							debug_tempux2=debug_tempux2+c[kk-1][0]*(debug_2_u[k*ny*nx+j*nx+(i+kk)]+debug_2_u[k*ny*nx+j*nx+(i-kk)]);
 
-							debug_tempvx2=debug_tempvx2+c[kk-1][0]*(v_x[k*ny*nx+j*nx+(i+kk)]+v_x[k*ny*nx+j*nx+(i-kk)]);
+							debug_tempvx2=debug_tempvx2+c[kk-1][0]*(debug_2_v[k*ny*nx+j*nx+(i+kk)]+debug_2_v[k*ny*nx+j*nx+(i-kk)]);
 
-							debug_tempwx2=debug_tempwx2+c[kk-1][0]*(w_x[k*ny*nx+j*nx+(i+kk)]+w_x[k*ny*nx+j*nx+(i-kk)]);
+							debug_tempwx2=debug_tempwx2+c[kk-1][0]*(debug_2_w[k*ny*nx+j*nx+(i+kk)]+debug_2_w[k*ny*nx+j*nx+(i-kk)]);
 
 						} //for(kk=1;kk<=mm;kk++) end
-						debug_tempux2=(debug_tempux2+c0*u_x[k*ny*nx+j*nx+i])*vvp2*dtx*dtx;
-						debug_tempvx2=(debug_tempvx2+c0*v_x[k*ny*nx+j*nx+i])*vvs2*dtx*dtx;
-						debug_tempwx2=(debug_tempwx2+c0*w_x[k*ny*nx+j*nx+i])*vvs2*dtx*dtx;
+						debug_tempux2=(debug_tempux2+c0*debug_2_u[k*ny*nx+j*nx+i])*vvp2*dtx*dtx;
+						debug_tempvx2=(debug_tempvx2+c0*debug_2_v[k*ny*nx+j*nx+i])*vvs2*dtx*dtx;
+						debug_tempwx2=(debug_tempwx2+c0*debug_2_w[k*ny*nx+j*nx+i])*vvs2*dtx*dtx;
 						if ( fabs(debug_tempux2 - tempux2) > _DEBUG_MAX_DIFF ) printf("[Temp Warining Ux2] l: %d i: %d j: %d k: %d debugvalue: %f value: %f diff:%f\n", l, i, j, k,debug_tempux2, tempux2 ,fabs(debug_tempux2-tempux2));
 						if ( fabs(debug_tempvx2 - tempvx2) > _DEBUG_MAX_DIFF ) printf("[Temp Warining Vx2] l: %d i: %d j: %d k: %d debugvalue: %f value: %f diff:%f\n", l, i, j, k,debug_tempvx2, tempvx2 ,fabs(debug_tempvx2-tempvx2));
 						if ( fabs(debug_tempwx2 - tempwx2) > _DEBUG_MAX_DIFF ) printf("[Temp Warining Wx2] l: %d i: %d j: %d k: %d debugvalue: %f value: %f diff:%f\n", l, i, j, k,debug_tempwx2, tempwx2 ,fabs(debug_tempwx2-tempwx2));
@@ -627,7 +627,7 @@ int main(int argc, char **argv)
 								tempvxy += current_c*_tempvxy;
 							}
 						} //for(kk=1;kk<=mm;kk++) end
-#ifdef _DEBUG_TEST
+#ifdef _DEBUG_LEVEL_2
 	/////////////////////////////////////////////////////////////
 	//	Debug purpose code start
 						float debug_tempuxy = 0;
@@ -636,8 +636,8 @@ int main(int argc, char **argv)
 						{
 							for(kkk=1;kkk<=mm;kkk++)
 							{
-								debug_tempuxy=debug_tempuxy+c[kkk-1][1+kk]*(u_x[k*ny*nx+(j+kkk)*nx+(i+kk)] -u_x[k*ny*nx+(j-kkk)*nx+(i+kk)] +u_x[k*ny*nx+(j-kkk)*nx+(i-kk)] -u_x[k*ny*nx+(j+kkk)*nx+(i-kk)]);
-								debug_tempvxy=debug_tempvxy+c[kkk-1][1+kk]*(v_x[k*ny*nx+(j+kkk)*nx+(i+kk)] -v_x[k*ny*nx+(j-kkk)*nx+(i+kk)] +v_x[k*ny*nx+(j-kkk)*nx+(i-kk)] -v_x[k*ny*nx+(j+kkk)*nx+(i-kk)]);
+								debug_tempuxy=debug_tempuxy+c[kkk-1][1+kk]*(debug_2_u[k*ny*nx+(j+kkk)*nx+(i+kk)] -debug_2_u[k*ny*nx+(j-kkk)*nx+(i+kk)] +debug_2_u[k*ny*nx+(j-kkk)*nx+(i-kk)] -debug_2_u[k*ny*nx+(j+kkk)*nx+(i-kk)]);
+								debug_tempvxy=debug_tempvxy+c[kkk-1][1+kk]*(debug_2_v[k*ny*nx+(j+kkk)*nx+(i+kk)] -debug_2_v[k*ny*nx+(j-kkk)*nx+(i+kk)] +debug_2_v[k*ny*nx+(j-kkk)*nx+(i-kk)] -debug_2_v[k*ny*nx+(j+kkk)*nx+(i-kk)]);
 							} // for(kkk=1;kkk<=mm;kkk++) end
 						} //for(kk=1;kk<=mm;kk++) end
 
@@ -684,7 +684,7 @@ int main(int argc, char **argv)
 						tempuy2 *= vvs2_dtx_dtx;
 						tempvy2 *= vvp2_dtx_dtx;
 						tempwy2 *= vvs2_dtx_dtx;
-#ifdef _DEBUG_TEST
+#ifdef _DEBUG_LEVEL_2
 	/////////////////////////////////////////////////////////////
 	//	Debug purpose code start
 						float debug_tempuy2 = 0;
@@ -692,16 +692,16 @@ int main(int argc, char **argv)
 						float debug_tempwy2 = 0;
 						for(kk=1;kk<=mm;kk++)
 						{
-							debug_tempuy2=debug_tempuy2+c[kk-1][0]*(u_x[k*ny*nx+(j+kk)*nx+i]+u_x[k*ny*nx+(j-kk)*nx+i]);
+							debug_tempuy2=debug_tempuy2+c[kk-1][0]*(debug_2_u[k*ny*nx+(j+kk)*nx+i]+debug_2_u[k*ny*nx+(j-kk)*nx+i]);
 
-							debug_tempvy2=debug_tempvy2+c[kk-1][0]*(v_x[k*ny*nx+(j+kk)*nx+i]+v_x[k*ny*nx+(j-kk)*nx+i]);
+							debug_tempvy2=debug_tempvy2+c[kk-1][0]*(debug_2_v[k*ny*nx+(j+kk)*nx+i]+debug_2_v[k*ny*nx+(j-kk)*nx+i]);
 
-							debug_tempwy2=debug_tempwy2+c[kk-1][0]*(w_x[k*ny*nx+(j+kk)*nx+i]+w_x[k*ny*nx+(j-kk)*nx+i]);
+							debug_tempwy2=debug_tempwy2+c[kk-1][0]*(debug_2_w[k*ny*nx+(j+kk)*nx+i]+debug_2_w[k*ny*nx+(j-kk)*nx+i]);
 
 						} //for(kk=1;kk<=mm;kk++) end
-						debug_tempuy2=(debug_tempuy2+c0*u_x[k*ny*nx+j*nx+i])*vvs2*dtx*dtx;
-						debug_tempvy2=(debug_tempvy2+c0*v_x[k*ny*nx+j*nx+i])*vvp2*dtx*dtx;
-						debug_tempwy2=(debug_tempwy2+c0*w_x[k*ny*nx+j*nx+i])*vvs2*dtx*dtx;
+						debug_tempuy2=(debug_tempuy2+c0*debug_2_u[k*ny*nx+j*nx+i])*vvs2*dtx*dtx;
+						debug_tempvy2=(debug_tempvy2+c0*debug_2_v[k*ny*nx+j*nx+i])*vvp2*dtx*dtx;
+						debug_tempwy2=(debug_tempwy2+c0*debug_2_w[k*ny*nx+j*nx+i])*vvs2*dtx*dtx;
 						if ( fabs(debug_tempuy2 - tempuy2) > _DEBUG_MAX_DIFF ) printf("[Temp Warining Uy2] l: %d i: %d j: %d k: %d debugvalue: %f value: %f diff %f\n", l, i, j, k, debug_tempuy2, tempuy2,fabs(debug_tempuy2-tempuy2) );
 						if ( fabs(debug_tempvy2 - tempvy2) > _DEBUG_MAX_DIFF ) printf("[Temp Warining Vy2] l: %d i: %d j: %d k: %d debugvalue: %f value: %f diff %f\n", l, i, j, k, debug_tempvy2, tempvy2,fabs(debug_tempvy2-tempvy2) );
 						if ( fabs(debug_tempwy2 - tempwy2) > _DEBUG_MAX_DIFF ) printf("[Temp Warining Wy2] l: %d i: %d j: %d k: %d debugvalue: %f value: %f diff %f\n", l, i, j, k, debug_tempwy2, tempwy2,fabs(debug_tempwy2-tempwy2) );
@@ -734,7 +734,7 @@ int main(int argc, char **argv)
 								tempwyz += current_c*_tempwyz;
 							}
 						} //for(kk=1;kk<=mm;kk++) end
-#ifdef _DEBUG_TEST
+#ifdef _DEBUG_LEVEL_2
 	/////////////////////////////////////////////////////////////
 	//	Debug purpose code start
 						float debug_tempvyz = 0;
@@ -743,8 +743,8 @@ int main(int argc, char **argv)
 						{
 							for(kkk=1;kkk<=mm;kkk++)
 							{
-								debug_tempvyz=debug_tempvyz+c[kkk-1][1+kk]*(v_x[(k+kkk)*ny*nx+(j+kk)*nx+i] -v_x[(k-kkk)*ny*nx+(j+kk)*nx+i] +v_x[(k-kkk)*ny*nx+(j-kk)*nx+i] -v_x[(k+kkk)*ny*nx+(j-kk)*nx+i]);
-								debug_tempwyz=debug_tempwyz+c[kkk-1][1+kk]*(w_x[(k+kkk)*ny*nx+(j+kk)*nx+i] -w_x[(k-kkk)*ny*nx+(j+kk)*nx+i] +w_x[(k-kkk)*ny*nx+(j-kk)*nx+i] -w_x[(k+kkk)*ny*nx+(j-kk)*nx+i]);
+								debug_tempvyz=debug_tempvyz+c[kkk-1][1+kk]*(debug_2_v[(k+kkk)*ny*nx+(j+kk)*nx+i] -debug_2_v[(k-kkk)*ny*nx+(j+kk)*nx+i] +debug_2_v[(k-kkk)*ny*nx+(j-kk)*nx+i] -debug_2_v[(k+kkk)*ny*nx+(j-kk)*nx+i]);
+								debug_tempwyz=debug_tempwyz+c[kkk-1][1+kk]*(debug_2_w[(k+kkk)*ny*nx+(j+kk)*nx+i] -debug_2_w[(k-kkk)*ny*nx+(j+kk)*nx+i] +debug_2_w[(k-kkk)*ny*nx+(j-kk)*nx+i] -debug_2_w[(k+kkk)*ny*nx+(j-kk)*nx+i]);
 							} // for(kkk=1;kkk<=mm;kkk++) end
 						} //for(kk=1;kk<=mm;kk++) end
 
@@ -794,7 +794,7 @@ int main(int argc, char **argv)
 						tempuz2 *= vvs2_dtz_dtz;
 						tempvz2 *= vvs2_dtz_dtz;
 						tempwz2 *= vvp2_dtz_dtz;
-#ifdef _DEBUG_TEST
+#ifdef _DEBUG_LEVEL_2
 	/////////////////////////////////////////////////////////////
 	//	Debug purpose code start
 						float debug_tempuz2 = 0;
@@ -802,16 +802,16 @@ int main(int argc, char **argv)
 						float debug_tempwz2 = 0;
 						for(kk=1;kk<=mm;kk++)
 						{
-							debug_tempuz2=debug_tempuz2+c[kk-1][0]*(u_x[(k+kk)*ny*nx+j*nx+i]+u_x[(k-kk)*ny*nx+j*nx+i]);
+							debug_tempuz2=debug_tempuz2+c[kk-1][0]*(debug_2_u[(k+kk)*ny*nx+j*nx+i]+debug_2_u[(k-kk)*ny*nx+j*nx+i]);
 
-							debug_tempvz2=debug_tempvz2+c[kk-1][0]*(v_x[(k+kk)*ny*nx+j*nx+i]+v_x[(k-kk)*ny*nx+j*nx+i]);
+							debug_tempvz2=debug_tempvz2+c[kk-1][0]*(debug_2_v[(k+kk)*ny*nx+j*nx+i]+debug_2_v[(k-kk)*ny*nx+j*nx+i]);
 
-							debug_tempwz2=debug_tempwz2+c[kk-1][0]*(w_x[(k+kk)*ny*nx+j*nx+i]+w_x[(k-kk)*ny*nx+j*nx+i]);
+							debug_tempwz2=debug_tempwz2+c[kk-1][0]*(debug_2_w[(k+kk)*ny*nx+j*nx+i]+debug_2_w[(k-kk)*ny*nx+j*nx+i]);
 
 						} //for(kk=1;kk<=mm;kk++) end
-						debug_tempuz2=(debug_tempuz2+c0*u_x[k*ny*nx+j*nx+i])*vvs2*dtz*dtz;
-						debug_tempvz2=(debug_tempvz2+c0*v_x[k*ny*nx+j*nx+i])*vvs2*dtz*dtz;
-						debug_tempwz2=(debug_tempwz2+c0*w_x[k*ny*nx+j*nx+i])*vvp2*dtz*dtz;
+						debug_tempuz2=(debug_tempuz2+c0*debug_2_u[k*ny*nx+j*nx+i])*vvs2*dtz*dtz;
+						debug_tempvz2=(debug_tempvz2+c0*debug_2_v[k*ny*nx+j*nx+i])*vvs2*dtz*dtz;
+						debug_tempwz2=(debug_tempwz2+c0*debug_2_w[k*ny*nx+j*nx+i])*vvp2*dtz*dtz;
 						if ( fabs(debug_tempuz2 - tempuz2) > _DEBUG_MAX_DIFF ) printf("[Temp Warining Uz2] l: %d i: %d j: %d k: %d debugvalue: %f value: %f diff: %f \n", l, i, j, k, debug_tempuz2, tempuz2 ,fabs(debug_tempuz2-tempuz2));
 						if ( fabs(debug_tempvz2 - tempvz2) > _DEBUG_MAX_DIFF ) printf("[Temp Warining Vz2] l: %d i: %d j: %d k: %d debugvalue: %f value: %f diff: %f \n", l, i, j, k, debug_tempvz2, tempvz2 ,fabs(debug_tempvz2-tempvz2));
 						if ( fabs(debug_tempwz2 - tempwz2) > _DEBUG_MAX_DIFF ) printf("[Temp Warining Wz2] l: %d i: %d j: %d k: %d debugvalue: %f value: %f diff: %f \n", l, i, j, k, debug_tempwz2, tempwz2 ,fabs(debug_tempwz2-tempwz2));
@@ -842,7 +842,7 @@ int main(int argc, char **argv)
 								tempwxz += current_c*_tempwxz;
 							}
 						} //for(kk=1;kk<=mm;kk++) end
-#ifdef _DEBUG_TEST
+#ifdef _DEBUG_LEVEL_2
 	/////////////////////////////////////////////////////////////
 	//	Debug purpose code start
 						float debug_tempuxz = 0;
@@ -851,8 +851,8 @@ int main(int argc, char **argv)
 						{
 							for(kkk=1;kkk<=mm;kkk++)
 							{
-								debug_tempuxz=debug_tempuxz+c[kkk-1][1+kk]*(u_x[(k+kkk)*ny*nx+j*nx+(i+kk)] -u_x[(k-kkk)*ny*nx+j*nx+(i+kk)] +u_x[(k-kkk)*ny*nx+j*nx+(i-kk)] -u_x[(k+kkk)*ny*nx+j*nx+(i-kk)]);
-								debug_tempwxz=debug_tempwxz+c[kkk-1][1+kk]*(w_x[(k+kkk)*ny*nx+j*nx+(i+kk)] -w_x[(k-kkk)*ny*nx+j*nx+(i+kk)] +w_x[(k-kkk)*ny*nx+j*nx+(i-kk)] -w_x[(k+kkk)*ny*nx+j*nx+(i-kk)]);
+								debug_tempuxz=debug_tempuxz+c[kkk-1][1+kk]*(debug_2_u[(k+kkk)*ny*nx+j*nx+(i+kk)] -debug_2_u[(k-kkk)*ny*nx+j*nx+(i+kk)] +debug_2_u[(k-kkk)*ny*nx+j*nx+(i-kk)] -debug_2_u[(k+kkk)*ny*nx+j*nx+(i-kk)]);
+								debug_tempwxz=debug_tempwxz+c[kkk-1][1+kk]*(debug_2_w[(k+kkk)*ny*nx+j*nx+(i+kk)] -debug_2_w[(k-kkk)*ny*nx+j*nx+(i+kk)] +debug_2_w[(k-kkk)*ny*nx+j*nx+(i-kk)] -debug_2_w[(k+kkk)*ny*nx+j*nx+(i-kk)]);
 							} // for(kkk=1;kkk<=mm;kkk++) end
 						} //for(kk=1;kk<=mm;kk++) end
 
@@ -920,16 +920,16 @@ int main(int argc, char **argv)
 	/////////////////////////////////////////////////////////////
 #endif
 
-#ifdef _DEBUG_TEST
-	/////////////////////////////////////////////////////////////
-	//	Debug purpose code start
-			float diff;
-						if((diff = fabs(debug_up[k*ny*nx+j*nx+i]+debug_us[k*ny*nx+j*nx+i] - u_x[nIndex])) > _DEBUG_MAX_DIFF) { printf("[Warining U] l: %d nIndex:%d index: %d k: %d j: %d i: %d diff: %f\n", l, nIndex, k*ny*nx+j*nx+i, k, j, i, diff);} //u[k*ny*nx+j*nx+i]=
-						if((diff = fabs(debug_vp[k*ny*nx+j*nx+i]+debug_vs[k*ny*nx+j*nx+i] - v_x[nIndex])) > _DEBUG_MAX_DIFF) { printf("[Warining V] l: %d nIndex:%d index: %d k: %d j: %d i: %d diff: %f\n", l, nIndex, k*ny*nx+j*nx+i, k, j, i, diff);} //v[k*ny*nx+j*nx+i]=
-						if((diff = fabs(debug_wp[k*ny*nx+j*nx+i]+debug_ws[k*ny*nx+j*nx+i] - w_x[nIndex])) > _DEBUG_MAX_DIFF) { printf("[Warining W] l: %d nIndex:%d index: %d k: %d j: %d i: %d diff: %f\n", l, nIndex, k*ny*nx+j*nx+i, k, j, i, diff);} //w[k*ny*nx+j*nx+i]=
-	//	Debug purpose code end
-	/////////////////////////////////////////////////////////////
-#endif
+// #ifdef _DEBUG_TEST
+// 	/////////////////////////////////////////////////////////////
+// 	//	Debug purpose code start
+// 			float diff;
+// 						if((diff = fabs(debug_up[k*ny*nx+j*nx+i]+debug_us[k*ny*nx+j*nx+i] - u_x[nIndex])) > _DEBUG_MAX_DIFF) { printf("[Warining U] l: %d nIndex:%d index: %d k: %d j: %d i: %d diff: %f\n", l, nIndex, k*ny*nx+j*nx+i, k, j, i, diff);} //u[k*ny*nx+j*nx+i]=
+// 						if((diff = fabs(debug_vp[k*ny*nx+j*nx+i]+debug_vs[k*ny*nx+j*nx+i] - v_x[nIndex])) > _DEBUG_MAX_DIFF) { printf("[Warining V] l: %d nIndex:%d index: %d k: %d j: %d i: %d diff: %f\n", l, nIndex, k*ny*nx+j*nx+i, k, j, i, diff);} //v[k*ny*nx+j*nx+i]=
+// 						if((diff = fabs(debug_wp[k*ny*nx+j*nx+i]+debug_ws[k*ny*nx+j*nx+i] - w_x[nIndex])) > _DEBUG_MAX_DIFF) { printf("[Warining W] l: %d nIndex:%d index: %d k: %d j: %d i: %d diff: %f\n", l, nIndex, k*ny*nx+j*nx+i, k, j, i, diff);} //w[k*ny*nx+j*nx+i]=
+// 	//	Debug purpose code end
+// 	/////////////////////////////////////////////////////////////
+// #endif
 						nIndex++;
 					}//for(i=nleft;i<nright;i++) end
 					nIndex += nx+nleft-nright;
@@ -962,7 +962,7 @@ int main(int argc, char **argv)
 			for(int j=0;j<ny;++j)
 			fprintf(flog,"%f\n",up[POSITION_INDEX_X(169,i,j)]);
 		}
-		fwrite(up+POSITION_INDEX_X(169,0,0),sizeof(float),nSliceSize,fout);
+		fwrite(up1+POSITION_INDEX_X(169,0,0),sizeof(float),nSliceSize,fout);
 //#endif
 
 	}//for(ishot=1;ishot<=nshot;ishot++) end
