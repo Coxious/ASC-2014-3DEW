@@ -7,7 +7,7 @@
 
 #define PIE 3.1415926
 
-#define CPU_RUNING_DEBUG
+#define DEBUG_CPU_RUNING
 
 
 //#define POSITION_INDEX(_z,_y,_x)          ((_z)*ny*nx + (_y)*nx + (_x))
@@ -19,7 +19,6 @@
 #define POSITION_INDEX_X(_z,_y,_x)   ((_z)*(nMicMaxYLength+10)*(nMicMaxXLength+10) + (_y)*(nMicMaxXLength+10) + (_x))
 #define POSITION_INDEX_Y(_z,_y,_x)   ((_x)*(nMicMaxZLength+10)*(nMicMaxYLength+10) + (_z)*(nMicMaxYLength+10) + (_y))
 #define POSITION_INDEX_Z(_z,_y,_x)   ((_y)*(nMicMaxXLength+10)*(nMicMaxZLength+10) + (_x)*(nMicMaxZLength+10) + (_z))
-
 
 #ifndef	DEBUG_CPU_RUNING
 #	define MIC_ALLOC       alloc_if(1) free_if(0)
@@ -228,8 +227,8 @@ int main(int argc, char **argv) {
 
 	float * to_write = (float*)calloc(nSliceSize,sizeof(float));
 
-	const int mic_used_size = pow(2.*((lt*dt*velmax)/unit+10.)+10.,3.)+1;
-	const int mic_slice_size = pow(2.*((lt*dt*velmax)/unit+10.)+10.,2.)+1;
+	const int mic_used_size = pow(2.*((lt*dt*velmax)/unit+10.)+10.,3.);
+	const int mic_slice_size = pow(2.*((lt*dt*velmax)/unit+10.)+10.,2.);
 
 	printf("length: %fmic_slice_size:%d mic_used_size:%d\n",2.*((lt*dt*velmax)/unit+10.)+10.,mic_slice_size, mic_used_size);
 
@@ -277,34 +276,34 @@ int main(int argc, char **argv) {
 	}
 
 #else
-		u_x = malloc(sizeof(float)*mic_used_size);
-		v_x = malloc(sizeof(float)*mic_used_size);
-		w_x = malloc(sizeof(float)*mic_used_size);
-		u_y = malloc(sizeof(float)*mic_used_size);
-		v_y = malloc(sizeof(float)*mic_used_size);
-		w_y = malloc(sizeof(float)*mic_used_size);
-		u_z = malloc(sizeof(float)*mic_used_size);
-		v_z = malloc(sizeof(float)*mic_used_size);
-		w_z = malloc(sizeof(float)*mic_used_size);
-		up  = malloc(sizeof(float)*mic_used_size);
-		up1 = malloc(sizeof(float)*mic_used_size);
-		up2 = malloc(sizeof(float)*mic_used_size);
-		vp  = malloc(sizeof(float)*mic_used_size);
-		vp1 = malloc(sizeof(float)*mic_used_size);
-		vp2 = malloc(sizeof(float)*mic_used_size);
-		wp  = malloc(sizeof(float)*mic_used_size);
-		wp1 = malloc(sizeof(float)*mic_used_size);
-		wp2 = malloc(sizeof(float)*mic_used_size);
-		us  = malloc(sizeof(float)*mic_used_size);
-		us1 = malloc(sizeof(float)*mic_used_size);
-		us2 = malloc(sizeof(float)*mic_used_size);
-		vs  = malloc(sizeof(float)*mic_used_size);
-		vs1 = malloc(sizeof(float)*mic_used_size);
-		vs2 = malloc(sizeof(float)*mic_used_size);
-		ws  = malloc(sizeof(float)*mic_used_size);
-		ws1 = malloc(sizeof(float)*mic_used_size);
-		ws2 = malloc(sizeof(float)*mic_used_size);
-		up_out=malloc(sizeof(float)*mic_slice_size);
+		u_x = (float *)malloc(sizeof(float)*mic_used_size);
+		v_x = (float *)malloc(sizeof(float)*mic_used_size);
+		w_x = (float *)malloc(sizeof(float)*mic_used_size);
+		u_y = (float *)malloc(sizeof(float)*mic_used_size);
+		v_y = (float *)malloc(sizeof(float)*mic_used_size);
+		w_y = (float *)malloc(sizeof(float)*mic_used_size);
+		u_z = (float *)malloc(sizeof(float)*mic_used_size);
+		v_z = (float *)malloc(sizeof(float)*mic_used_size);
+		w_z = (float *)malloc(sizeof(float)*mic_used_size);
+		up  = (float *)malloc(sizeof(float)*mic_used_size);
+		up1 = (float *)malloc(sizeof(float)*mic_used_size);
+		up2 = (float *)malloc(sizeof(float)*mic_used_size);
+		vp  = (float *)malloc(sizeof(float)*mic_used_size);
+		vp1 = (float *)malloc(sizeof(float)*mic_used_size);
+		vp2 = (float *)malloc(sizeof(float)*mic_used_size);
+		wp  = (float *)malloc(sizeof(float)*mic_used_size);
+		wp1 = (float *)malloc(sizeof(float)*mic_used_size);
+		wp2 = (float *)malloc(sizeof(float)*mic_used_size);
+		us  = (float *)malloc(sizeof(float)*mic_used_size);
+		us1 = (float *)malloc(sizeof(float)*mic_used_size);
+		us2 = (float *)malloc(sizeof(float)*mic_used_size);
+		vs  = (float *)malloc(sizeof(float)*mic_used_size);
+		vs1 = (float *)malloc(sizeof(float)*mic_used_size);
+		vs2 = (float *)malloc(sizeof(float)*mic_used_size);
+		ws  = (float *)malloc(sizeof(float)*mic_used_size);
+		ws1 = (float *)malloc(sizeof(float)*mic_used_size);
+		ws2 = (float *)malloc(sizeof(float)*mic_used_size);
+		up_out=(float *)malloc(sizeof(float)*mic_slice_size);
 #endif
 
 	nshot=nxshot*nyshot;
@@ -429,7 +428,7 @@ int main(int argc, char **argv) {
 				nMicYLength = n_mic_back   - --n_mic_front  ;
 				nMicZLength = n_mic_bottom - --n_mic_top 	;
 				printf("Len_X: %d, Len_Y: %d, Len_Z: %d\n", nMicXLength, nMicYLength, nMicZLength );
-				printf("Size to use now : %d\n",(nMicXLength + 10)*(nMicZLength + 10)*(nMicYLength + 10));
+		 		printf("Size to use now : %d\n",(nMicXLength + 10)*(nMicZLength + 10)*(nMicYLength + 10));
 
 				// printf("nX: %d nY: %d nZ: %d \n",nright - nleft,nback - nfront,nbottom - ntop);
 
@@ -752,16 +751,20 @@ int main(int argc, char **argv) {
 			out(up_out :length(mic_slice_size) MIC_REUSE) signal(up_out)
 #endif
 		{
-			for(int i = 0;i<mic_slice_size;++i)
+
+		for(j=5;j<nMicYLength+5;j++)
+			for(i=5;i<nMicXLength+5;i++)
 			{
-				up_out[i]=((float*)(up1+(169-ntop+5)*mic_slice_size))[i];
+				up_out[POSITION_INDEX_X(0,j,i)] = up1[POSITION_INDEX_X(169-ntop+5,j,i)];
+//				up_out[i]=((float*)(up1+(169-ntop+5)*mic_slice_size))[i];
+				printf("up_out i:%d j:%d %f\n",i,j,up_out[POSITION_INDEX_X(0,j,i)]);
 			}
 		}
 		printf("To write the data!");
         for(j=nfront;j<nback;j++)
             for(i=nleft;i<nright;i++){
-            	to_write[POSITION_INDEX_HOST_X(0,j,i)] =up_out[POSITION_INDEX_X(0,j+5 - nfront,i+5-nleft)];
-		        fprintf(fout,"i:%d j:%d :%f\n",i,j,to_write[POSITION_INDEX_HOST_X(0,j+5,i+5)]);
+            	to_write[POSITION_INDEX_HOST_X(0,j,i)] =up_out[POSITION_INDEX_X(0,j+5-nfront,i+5-nleft)];
+		        fprintf(fout,"i:%d j:%d :%f\n",i,j,to_write[POSITION_INDEX_HOST_X(0,j,i)]);
             }
 		fwrite(to_write,sizeof(float),nSliceSize,fout);
 	}//for(ishot=1;ishot<=nshot;ishot++) end
