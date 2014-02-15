@@ -238,6 +238,7 @@ int main(int argc, char **argv) {
 		float sp=PIE*frequency*tt;
 		float fx=100000.*exp(-sp*sp)*(1.-2.*sp*sp);
 		wave[l]=fx;
+		printf("wave l:%d:%f",l,wave[l]);
 	}
 
 	c0=-2.927222164;
@@ -321,8 +322,8 @@ int main(int argc, char **argv) {
 			nocopy(u_x,v_x,w_x,u_y,v_y,w_y,u_z,v_z,w_z,\
 				up ,up1,up2,vp ,vp1,vp2,wp ,wp1,wp2,us ,us1,us2,vs,\
 				vs1,vs2,ws ,ws1,ws2) \
-			nocopy(wave:length(lt) MIC_ALLOC) \
-			nocopy(c: MIC_ALLOC)
+			nocopy(wave) \
+			nocopy(c)
 		{
 			printf("MIC started!\n");
 
@@ -477,7 +478,7 @@ int main(int argc, char **argv) {
 							ws[nIndex] = tempwx2;
 							//Debug
 							if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
-								printf("[X]%d\n", wp[nIndex]);
+								printf("[X]%f wave:%f px:%f should be %f\n", wp[nIndex],wave[l-1],px,wave[l-1]*px);
 
 						}
 					}
@@ -654,7 +655,7 @@ int main(int argc, char **argv) {
 							ws[nIndex_X] += - tempuxz * vvs2_dtz_dtx;
 							// DEBUG
 							if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
-								printf("[Z]%d\n", wp[nIndex]);
+								printf("[Z]%f\n", wp[nIndex]);
 						}
 					}
 				}
@@ -672,7 +673,7 @@ int main(int argc, char **argv) {
 							vs[nIndex] += 2 * vs1[nIndex] - vs2[nIndex];
 							ws[nIndex] += 2 * ws1[nIndex] - ws2[nIndex];
 							if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
-								printf("[Final]%d\n", wp[nIndex]);
+								printf("[Final]%f\n", wp[nIndex]);
 							u_x[POSITION_INDEX_X(k,j,i)] = up[POSITION_INDEX_X(k,j,i)] + us[POSITION_INDEX_X(k,j,i)];
 							v_x[POSITION_INDEX_X(k,j,i)] = vp[POSITION_INDEX_X(k,j,i)] + vs[POSITION_INDEX_X(k,j,i)];
 							w_x[POSITION_INDEX_X(k,j,i)] = wp[POSITION_INDEX_X(k,j,i)] + ws[POSITION_INDEX_X(k,j,i)];
@@ -681,7 +682,7 @@ int main(int argc, char **argv) {
 							v_z[POSITION_INDEX_Z(k,j,i)] = v_y[POSITION_INDEX_Y(k,j,i)] = v_x[POSITION_INDEX_X(k,j,i)];
 							w_z[POSITION_INDEX_Z(k,j,i)] = w_y[POSITION_INDEX_Y(k,j,i)] = w_x[POSITION_INDEX_X(k,j,i)];
 							if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
-								printf("[Final]%d\n", w_x[nIndex]);
+								printf("[Final]%f\n", w_x[nIndex]);
 						}//for(i=nleft;i<nright;i++) end
 
 				printf("Start waiting....%d\n",l);
