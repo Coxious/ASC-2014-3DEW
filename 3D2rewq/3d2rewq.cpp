@@ -293,7 +293,7 @@ int main(int argc, char **argv) {
 		ncy_shot=ncy_shot1+(ishot/nxshot)*dyshot;
 		ncx_shot=ncx_shot1+(ishot%nxshot)*dxshot;
 
-		xmax=l*dt*velmax;
+		xmax=lt*dt*velmax;
 		nleft=ncx_shot-xmax/unit-10;
 		nright=ncx_shot+xmax/unit+10;
 		nfront=ncy_shot-xmax/unit-10;
@@ -356,7 +356,6 @@ int main(int argc, char **argv) {
 
 			for(l=1;l<=lt;l++)
 			{
-				printf("[L]Starting l ....%d\n",l);
 
 				xmax=l*dt*velmax;
 				n_mic_left=ncx_shot-xmax/unit-10;
@@ -371,6 +370,9 @@ int main(int argc, char **argv) {
 				if(n_mic_back>ny-5) n_mic_back=ny-5;
 				if(n_mic_top<5) n_mic_top=5;
 				if(n_mic_bottom>nz-5) n_mic_bottom=nz-5;
+
+				printf("[L]Starting l xmax:%d n_mic_left:%d n_mic_right:%d n_mic_top:%d n_mic_bottom:%d n_mic_front:%d n_mic_back:%d....%d\n",
+					xmax,n_mic_left,n_mic_right,n_mic_top,n_mic_bottom,n_mic_front,n_mic_back,l);
 
 				//
 				//	此处n_mic_XXX 系列变量同Host上的实际值相等。
@@ -401,6 +403,7 @@ int main(int argc, char **argv) {
 					for(j=5+n_mic_front-nfront;j<n_mic_front-nfront+nMicYLength+5;j++) {
 						for(i=5+n_mic_left-nleft;i<n_mic_left-nleft+nMicXLength+5;i++) {
 
+							// printf("i:%d j:%d k:%d\n",i-5+nleft,j-5+nfront,k-5+ntop);
 							int nIndex = POSITION_INDEX_X(k,j,i);
 
 							if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
@@ -472,6 +475,10 @@ int main(int argc, char **argv) {
 							us[nIndex] = - tempvxy * vvs2_dtz_dtx;
 							vs[nIndex] = tempvx2 - tempuxy * vvs2_dtz_dtx;
 							ws[nIndex] = tempwx2;
+							//Debug
+							if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
+								printf("[X]%d\n", wp[nIndex]);
+
 						}
 					}
 				}
@@ -642,10 +649,12 @@ int main(int argc, char **argv) {
 							up[nIndex_X] += tempwxz * vvp2_dtz_dtx;
 							vp[nIndex_X] += 0;
 							wp[nIndex_X] += tempwz2 + tempuxz * vvp2_dtz_dtx;
-
 							us[nIndex_X] += tempuz2 - tempwxz * vvs2_dtz_dtx;
 							vs[nIndex_X] += tempvz2;
 							ws[nIndex_X] += - tempuxz * vvs2_dtz_dtx;
+							// DEBUG
+							if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
+								printf("[Z]%d\n", wp[nIndex]);
 						}
 					}
 				}
@@ -662,7 +671,8 @@ int main(int argc, char **argv) {
 							us[nIndex] += 2 * us1[nIndex] - us2[nIndex];
 							vs[nIndex] += 2 * vs1[nIndex] - vs2[nIndex];
 							ws[nIndex] += 2 * ws1[nIndex] - ws2[nIndex];
-
+							if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
+								printf("[Final]%d\n", wp[nIndex]);
 							u_x[POSITION_INDEX_X(k,j,i)] = up[POSITION_INDEX_X(k,j,i)] + us[POSITION_INDEX_X(k,j,i)];
 							v_x[POSITION_INDEX_X(k,j,i)] = vp[POSITION_INDEX_X(k,j,i)] + vs[POSITION_INDEX_X(k,j,i)];
 							w_x[POSITION_INDEX_X(k,j,i)] = wp[POSITION_INDEX_X(k,j,i)] + ws[POSITION_INDEX_X(k,j,i)];
@@ -670,7 +680,8 @@ int main(int argc, char **argv) {
 							u_z[POSITION_INDEX_Z(k,j,i)] = u_y[POSITION_INDEX_Y(k,j,i)] = u_x[POSITION_INDEX_X(k,j,i)];
 							v_z[POSITION_INDEX_Z(k,j,i)] = v_y[POSITION_INDEX_Y(k,j,i)] = v_x[POSITION_INDEX_X(k,j,i)];
 							w_z[POSITION_INDEX_Z(k,j,i)] = w_y[POSITION_INDEX_Y(k,j,i)] = w_x[POSITION_INDEX_X(k,j,i)];
-
+							if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
+								printf("[Final]%d\n", w_x[nIndex]);
 						}//for(i=nleft;i<nright;i++) end
 
 				printf("Start waiting....%d\n",l);
@@ -700,7 +711,7 @@ int main(int argc, char **argv) {
 		printf("To write the data!");
         for(j=nfront;j<nback;j++)
             for(i=nleft;i<nright;i++){
-            	to_write[POSITION_INDEX_HOST_X(0,j,i)] =up_out[POSITION_INDEX_X(0,j+5,i+5)];
+            	to_write[POSITION_INDEX_HOST_X(0,j,i)] =up_out[POSITION_INDEX_X(0,j+5 - nfront,i+5-nleft)];
 		        fprintf(fout,"i:%d j:%d :%f\n",i,j,to_write[POSITION_INDEX_HOST_X(0,j+5,i+5)]);
             }
 		fwrite(to_write,sizeof(float),nSliceSize,fout);
