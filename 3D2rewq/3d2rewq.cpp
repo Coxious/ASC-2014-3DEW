@@ -7,6 +7,9 @@
 
 #define PIE 3.1415926
 
+#define CPU_RUNING_DEBUG
+
+
 //#define POSITION_INDEX(_z,_y,_x)          ((_z)*ny*nx + (_y)*nx + (_x))
 
 #define POSITION_INDEX_HOST_X(_z,_y,_x)        ((_z)*ny*nx + (_y)*nx + (_x))
@@ -17,12 +20,16 @@
 #define POSITION_INDEX_Y(_z,_y,_x)   ((_x)*(nMicMaxZLength+10)*(nMicMaxYLength+10) + (_z)*(nMicMaxYLength+10) + (_y))
 #define POSITION_INDEX_Z(_z,_y,_x)   ((_y)*(nMicMaxXLength+10)*(nMicMaxZLength+10) + (_x)*(nMicMaxZLength+10) + (_z))
 
-#define MIC_ALLOC       alloc_if(1) free_if(0)
-#define MIC_FREE        alloc_if(0) free_if(1)
-#define MIC_REUSE       alloc_if(0) free_if(0)
-#define MIC_SELF_MANAGE alloc_if(0) free_if(0)
 
-#define MIC_VAR         __attribute__((target(mic)))
+#ifndef	DEBUG_CPU_RUNING
+#	define MIC_ALLOC       alloc_if(1) free_if(0)
+#	define MIC_FREE        alloc_if(0) free_if(1)
+#	define MIC_REUSE       alloc_if(0) free_if(0)
+#	define MIC_SELF_MANAGE alloc_if(0) free_if(0)
+#	define MIC_VAR         __attribute__((target(mic)))
+#else
+#	define MIC_VAR
+#endif
 
 #define ROUND_TO_SIZE(_length, _alignment)    \
 			(((_length) + ((_alignment)-1)) & ~((_alignment) - 1))
@@ -257,6 +264,7 @@ int main(int argc, char **argv) {
 		for(j=0;j<5;j++)
 			c[j][2+i]=c[i][1]*c[j][1];
 
+#ifndef DEBUG_CPU_RUNING
 	#pragma offload_transfer target(mic:0) \
 		nocopy(u_x,v_x,w_x,u_y,v_y,w_y,u_z,v_z,w_z,\
 				up ,up1,up2,vp ,vp1,vp2,wp ,wp1,wp2,us ,us1,us2,vs,\
@@ -268,6 +276,37 @@ int main(int argc, char **argv) {
 		printf("Transfer finished!\n");
 	}
 
+#else
+		u_x = malloc(sizeof(float)*mic_used_size);
+		v_x = malloc(sizeof(float)*mic_used_size);
+		w_x = malloc(sizeof(float)*mic_used_size);
+		u_y = malloc(sizeof(float)*mic_used_size);
+		v_y = malloc(sizeof(float)*mic_used_size);
+		w_y = malloc(sizeof(float)*mic_used_size);
+		u_z = malloc(sizeof(float)*mic_used_size);
+		v_z = malloc(sizeof(float)*mic_used_size);
+		w_z = malloc(sizeof(float)*mic_used_size);
+		up  = malloc(sizeof(float)*mic_used_size);
+		up1 = malloc(sizeof(float)*mic_used_size);
+		up2 = malloc(sizeof(float)*mic_used_size);
+		vp  = malloc(sizeof(float)*mic_used_size);
+		vp1 = malloc(sizeof(float)*mic_used_size);
+		vp2 = malloc(sizeof(float)*mic_used_size);
+		wp  = malloc(sizeof(float)*mic_used_size);
+		wp1 = malloc(sizeof(float)*mic_used_size);
+		wp2 = malloc(sizeof(float)*mic_used_size);
+		us  = malloc(sizeof(float)*mic_used_size);
+		us1 = malloc(sizeof(float)*mic_used_size);
+		us2 = malloc(sizeof(float)*mic_used_size);
+		vs  = malloc(sizeof(float)*mic_used_size);
+		vs1 = malloc(sizeof(float)*mic_used_size);
+		vs2 = malloc(sizeof(float)*mic_used_size);
+		ws  = malloc(sizeof(float)*mic_used_size);
+		ws1 = malloc(sizeof(float)*mic_used_size);
+		ws2 = malloc(sizeof(float)*mic_used_size);
+		up_out=malloc(sizeof(float)*mic_slice_size);
+#endif
+
 	nshot=nxshot*nyshot;
 
 	dtx=dt/unit;
@@ -277,10 +316,12 @@ int main(int argc, char **argv) {
 
 	fout=fopen(outfile,"wb");
 
+#ifndef DEBUG_CPU_RUNING
 	#pragma offload_wait target(mic:0) wait(c)
 	{
 		printf("Wait finished!\n");
 	}
+#endif
 
 	// shot is divided to cluster, MPI
 	for(ishot=1;ishot<=nshot;ishot++)
@@ -318,6 +359,8 @@ int main(int argc, char **argv) {
 
 		printf("MAX_X: %d, MAX_Y: %d, MAX_Z: %d", nMicMaxXLength, nMicMaxYLength, nMicMaxZLength);
 
+
+#ifndef DEBUG_CPU_RUNING
 		#pragma offload target(mic:0) \
 			nocopy(u_x,v_x,w_x,u_y,v_y,w_y,u_z,v_z,w_z,\
 				up ,up1,up2,vp ,vp1,vp2,wp ,wp1,wp2,us ,us1,us2,vs,\
@@ -326,7 +369,10 @@ int main(int argc, char **argv) {
 			nocopy(c)
 		{
 			printf("MIC started!\n");
-
+#else
+		{
+			printf("CPU started!\n");
+#endif
 			memset(u_x,0,sizeof(float)*mic_used_size);
 			memset(v_x,0,sizeof(float)*mic_used_size);
 			memset(w_x,0,sizeof(float)*mic_used_size);
@@ -357,7 +403,6 @@ int main(int argc, char **argv) {
 
 			for(l=1;l<=lt;l++)
 			{
-
 				xmax=l*dt*velmax;
 				n_mic_left=ncx_shot-xmax/unit-10;
 				n_mic_right=ncx_shot+xmax/unit+10;
@@ -686,8 +731,10 @@ int main(int argc, char **argv) {
 						}//for(i=nleft;i<nright;i++) end
 
 				printf("Start waiting....%d\n",l);
+#ifndef DEBUG_CPU_RUNING
 #				pragma offload_wait target(mic:0) wait(up_out)
 				{}
+#endif
 				float *swap_temp;
 				swap_temp = up2; up2 = up1; up1 = up; up = swap_temp;
 				swap_temp = vp2; vp2 = vp1; vp1 = vp; vp = swap_temp;
@@ -698,15 +745,16 @@ int main(int argc, char **argv) {
 				printf("[L]Finished %d\n",l);
 			}//for(l=1;l<=lt;l++) end
 		}//MIC END
+
+#ifndef DEBUG_CPU_RUNING
 		#pragma offload target(mic:0)\
 			nocopy(up1:MIC_REUSE)\
 			out(up_out :length(mic_slice_size) MIC_REUSE) signal(up_out)
+#endif
 		{
-//			printf("i:%d j:%d :%f\n",i,j,to_write[POSITION_INDEX_HOST_X(0,j,i)]);
 			for(int i = 0;i<mic_slice_size;++i)
 			{
 				up_out[i]=((float*)(up1+(169-ntop+5)*mic_slice_size))[i];
-	//			printf("up_out %d:%f\n",i,up_out[i]);
 			}
 		}
 		printf("To write the data!");
@@ -719,6 +767,37 @@ int main(int argc, char **argv) {
 	}//for(ishot=1;ishot<=nshot;ishot++) end
 
 	fclose(fout);
+
+#ifdef DEBUG_CPU_RUNING
+	free(u_x);
+	free(v_x);
+	free(w_x);
+	free(u_y);
+	free(v_y);
+	free(w_y);
+	free(u_z);
+	free(v_z);
+	free(w_z);
+	free(up );
+	free(up1);
+	free(up2);
+	free(vp );
+	free(vp1);
+	free(vp2);
+	free(wp );
+	free(wp1);
+	free(wp2);
+	free(us );
+	free(us1);
+	free(us2);
+	free(vs );
+	free(vs1);
+	free(vs2);
+	free(ws );
+	free(ws1);
+	free(ws2);
+#endif
+
 	free(up_out);
 	free(wave);
 
