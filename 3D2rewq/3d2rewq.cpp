@@ -13,14 +13,9 @@
 #define POSITION_INDEX_HOST_Y(_z,_y,_x)        ((_x)*nz*ny + (_z)*ny + (_y))
 #define POSITION_INDEX_HOST_Z(_z,_y,_x)        ((_y)*nx*nz + (_x)*nz + (_z))
 
-
-#define POSITION_INDEX_OUT_DATA_X(_z,_y,_x)   ((_z)*nMicMaxYLength*nMicMaxXLength + (_y)*nMicMaxXLength + (_x))
-#define POSITION_INDEX_OUT_DATA_Y(_z,_y,_x)   ((_x)*nMicMaxZLength*nMicMaxYLength + (_z)*nMicMaxYLength + (_y))
-#define POSITION_INDEX_OUT_DATA_Z(_z,_y,_x)   ((_y)*nMicMaxXLength*nMicMaxZLength + (_x)*nMicMaxZLength + (_z))
-
-#define POSITION_INDEX_X(_z,_y,_x)   ((_z)*nMicMaxYLength*nMicMaxXLength + (_y)*nMicMaxXLength + (_x))
-#define POSITION_INDEX_Y(_z,_y,_x)   ((_x)*nMicMaxZLength*nMicMaxYLength + (_z)*nMicMaxYLength + (_y))
-#define POSITION_INDEX_Z(_z,_y,_x)   ((_y)*nMicMaxXLength*nMicMaxZLength + (_x)*nMicMaxZLength + (_z))
+#define POSITION_INDEX_X(_z,_y,_x)   ((_z)*(nMicMaxYLength+10)*(nMicMaxXLength+10) + (_y)*(nMicMaxXLength+10) + (_x))
+#define POSITION_INDEX_Y(_z,_y,_x)   ((_x)*(nMicMaxZLength+10)*(nMicMaxYLength+10) + (_z)*(nMicMaxYLength+10) + (_y))
+#define POSITION_INDEX_Z(_z,_y,_x)   ((_y)*(nMicMaxXLength+10)*(nMicMaxZLength+10) + (_x)*(nMicMaxZLength+10) + (_z))
 
 #define MIC_ALLOC       alloc_if(1) free_if(0)
 #define MIC_FREE        alloc_if(0) free_if(1)
@@ -35,8 +30,8 @@
 #define ROUND_TO_SIZE_LESS(_length,_alignment)  \
 			((_length) &~ ((_alignment)-1))
 
-#define vpp2(_z) (((_z+n_mic_bottom-5)<210)?(5290000):((_z+n_mic_bottom-5)>=260?12250000:7840000))
-#define vss2(_z) (((_z+n_mic_bottom-5)<210)?(1517824):((_z+n_mic_bottom-5)>=260?3644281:2277081))
+#define vpp2(_z) (((_z+ntop-5)<210)?(5290000):((_z+ntop-5)>=260?12250000:7840000))
+#define vss2(_z) (((_z+ntop-5)<210)?(1517824):((_z+ntop-5)>=260?3644281:2277081))
 
 #define _DEBUG_LEVEL_1_
 
@@ -408,7 +403,7 @@ int main(int argc, char **argv) {
 
 							int nIndex = POSITION_INDEX_X(k,j,i);
 
-							if(i==ncx_shot-1&&j==ncy_shot-1&&k==ncz_shot-1)
+							if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
 							{
 								px=1.;
 							}
@@ -695,16 +690,19 @@ int main(int argc, char **argv) {
 			nocopy(up1:MIC_REUSE)\
 			out(up_out :length(mic_slice_size) MIC_REUSE) signal(up_out)
 		{
+//			printf("i:%d j:%d :%f\n",i,j,to_write[POSITION_INDEX_HOST_X(0,j,i)]);
 			for(int i = 0;i<mic_slice_size;++i)
-				up_out[i]=((float*)(up1+(169-ntop)*mic_slice_size))[i];
+			{
+				up_out[i]=((float*)(up1+(169-ntop+5)*mic_slice_size))[i];
+	//			printf("up_out %d:%f\n",i,up_out[i]);
+			}
 		}
 		printf("To write the data!");
-        for(k=ntop;k<nbottom;k++)
-            for(j=nfront;j<nback;j++)
-                for(i=nleft;i<nright;i++){
-                	to_write[POSITION_INDEX_HOST_X(k,j,i)] =up_out[POSITION_INDEX_OUT_DATA_X(k,j,i)];
-                }
-
+        for(j=nfront;j<nback;j++)
+            for(i=nleft;i<nright;i++){
+            	to_write[POSITION_INDEX_HOST_X(0,j,i)] =up_out[POSITION_INDEX_X(0,j+5,i+5)];
+		        fprintf(fout,"i:%d j:%d :%f\n",i,j,to_write[POSITION_INDEX_HOST_X(0,j+5,i+5)]);
+            }
 		fwrite(to_write,sizeof(float),nSliceSize,fout);
 	}//for(ishot=1;ishot<=nshot;ishot++) end
 
