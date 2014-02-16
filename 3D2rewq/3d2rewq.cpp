@@ -11,7 +11,7 @@
 
 #define DEBUG_NO_PARALLEL
 
-//#define DEBUG_CPU_RUNNING
+#define DEBUG_CPU_RUNNING
 
 #define POSITION_INDEX_HOST_X(_z,_y,_x)        ((_z)*ny*nx + (_y)*nx + (_x))
 #define POSITION_INDEX_HOST_Y(_z,_y,_x)        ((_x)*nz*ny + (_z)*ny + (_y))
@@ -139,7 +139,7 @@ int main(int argc, char **argv) {
 	FILE  *fin, *fout, *flog;
 	struct timeval start,end;
 	float all_time;
-	float c[5][7];
+	float c[7][11];
 
 	if(argc<4)
 	{
@@ -249,19 +249,26 @@ int main(int argc, char **argv) {
 
 	c0=-2.927222164;
 	c[0][0]=1.66666665;
-	c[1][0]=-0.23809525;
-	c[2][0]=0.03968254;
-	c[3][0]=-0.004960318;
-	c[4][0]=0.0003174603;
-	c[0][1]=0.83333;
+	c[0][1]=-0.23809525;
+	c[0][2]=0.03968254;
+	c[0][3]=-0.004960318;
+	c[0][4]=0.0003174603;
+	c[1][0]=0.83333;
 	c[1][1]=-0.2381;
-	c[2][1]=0.0595;
-	c[3][1]=-0.0099;
-	c[4][1]=0.0008;
+	c[1][2]=0.0595;
+	c[1][3]=-0.0099;
+	c[1][4]=0.0008;
 
 	for(i=0;i<5;i++)
 		for(j=0;j<5;j++)
-			c[j][2+i]=c[i][1]*c[j][1];
+			c[2+i][j]=c[1][i]*c[1][j];
+
+    for(j=0;j<7;++j){
+        for(i=0;i<5;++i){
+            c[j][10-i] = c[j][i];
+        }
+        c[j][5] = c0;
+    }
 
 #ifndef DEBUG_CPU_RUNNING
 		u_x = (float *)malloc(sizeof(float)*mic_used_size);
@@ -525,16 +532,18 @@ int main(int argc, char **argv) {
 							tempwxz=0.0f;
 							tempwyz=0.0f;
 
-// #ifdef DEBUG_CPU_RUNNING
+ //#ifdef DEBUG_CPU_RUNNING
 							for(kk=1;kk<=5;kk++)
 							{
-								tempux2=tempux2+c[kk-1][0]*(u_x[POSITION_INDEX_X(k,j,i+kk)]+u_x[POSITION_INDEX_X(k,j,i-kk)]);
+								tempux2=tempux2+c[0][kk-1]*(u_x[POSITION_INDEX_X(k,j,i+kk)]+u_x[POSITION_INDEX_X(k,j,i-kk)]);
 
-								tempvx2=tempvx2+c[kk-1][0]*(v_x[POSITION_INDEX_X(k,j,i+kk)]+v_x[POSITION_INDEX_X(k,j,i-kk)]);
+								tempvx2=tempvx2+c[0][kk-1]*(v_x[POSITION_INDEX_X(k,j,i+kk)]+v_x[POSITION_INDEX_X(k,j,i-kk)]);
 
-								tempwx2=tempwx2+c[kk-1][0]*(w_x[POSITION_INDEX_X(k,j,i+kk)]+w_x[POSITION_INDEX_X(k,j,i-kk)]);
+								tempwx2=tempwx2+c[0][kk-1]*(w_x[POSITION_INDEX_X(k,j,i+kk)]+w_x[POSITION_INDEX_X(k,j,i-kk)]);
 							} //for(kk=1;kk<=5;kk++) end
+//#else
 
+//#endif
 							tempux2=(tempux2+c0*u_x[POSITION_INDEX_X(k,j,i)])*vvp2_dtx_dtx;
 
 							tempvx2=(tempvx2+c0*v_x[POSITION_INDEX_X(k,j,i)])*vvs2_dtx_dtx;
@@ -545,7 +554,7 @@ int main(int argc, char **argv) {
 							{
 								for(kkk=1;kkk<=5;kkk++)
 								{
-									current_c = c[kkk-1][1+kk];
+									current_c = c[1+kk][kkk-1];
 
 									_tempuxy = u_x[POSITION_INDEX_X(k,j+kkk,i+kk)];
 									_tempvxy = v_x[POSITION_INDEX_X(k,j+kkk,i+kk)];
@@ -570,9 +579,7 @@ int main(int argc, char **argv) {
 							vs[nIndex] = tempvx2 - tempuxy * vvs2_dtz_dtx;
 							ws[nIndex] = tempwx2;
 							wp[nIndex] = px * wave[l-1];
-//#else
 
-//#endif
 							// //Debug
 							// if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
 							// 	printf("[X]%f wave:%f px:%f should be %f\n", wp[nIndex],wave[l-1],px,wave[l-1]*px);
@@ -621,13 +628,13 @@ int main(int argc, char **argv) {
 							for(kk=1;kk<=5;kk++)
 							{
 								//if ( u_x[POSITION_INDEX_X(k,j+kk,i) != u_y[POSITION_INDEX_Y(k,j+kk,i)]] ) printf("[Warining] i: %d j: %d k: %d", i, j, k);
-								tempuy2=tempuy2+c[kk-1][0]*(u_y[POSITION_INDEX_Y(k,j+kk,i)]+u_y[POSITION_INDEX_Y(k,j-kk,i)]);
+								tempuy2=tempuy2+c[0][kk-1]*(u_y[POSITION_INDEX_Y(k,j+kk,i)]+u_y[POSITION_INDEX_Y(k,j-kk,i)]);
 
 								//if ( v_x[POSITION_INDEX_X(k,j+kk,i) != v_y[POSITION_INDEX_Y(k,j+kk,i)]] ) printf("[Warining] i: %d j: %d k: %d", i, j, k);
-								tempvy2=tempvy2+c[kk-1][0]*(v_y[POSITION_INDEX_Y(k,j+kk,i)]+v_y[POSITION_INDEX_Y(k,j-kk,i)]);
+								tempvy2=tempvy2+c[0][kk-1]*(v_y[POSITION_INDEX_Y(k,j+kk,i)]+v_y[POSITION_INDEX_Y(k,j-kk,i)]);
 
 								//if ( w_x[POSITION_INDEX_X(k,j+kk,i) != w_y[POSITION_INDEX_Y(k,j+kk,i)]] ) printf("[Warining] i: %d j: %d k: %d", i, j, k);
-								tempwy2=tempwy2+c[kk-1][0]*(w_y[POSITION_INDEX_Y(k,j+kk,i)]+w_y[POSITION_INDEX_Y(k,j-kk,i)]);
+								tempwy2=tempwy2+c[0][kk-1]*(w_y[POSITION_INDEX_Y(k,j+kk,i)]+w_y[POSITION_INDEX_Y(k,j-kk,i)]);
 							} //for(kk=1;kk<=5;kk++) end
 
 							tempuy2=(tempuy2+c0*u_y[POSITION_INDEX_Y(k,j,i)])*vvs2_dtx_dtx;
@@ -640,7 +647,7 @@ int main(int argc, char **argv) {
 							{
 								for(kkk=1;kkk<=5;kkk++)
 								{
-									current_c = c[kkk-1][1+kk];
+									current_c = c[1+kk][kkk-1];
 
 									_tempvyz = v_y[POSITION_INDEX_Y(k+kkk,j+kk,i)];
 									_tempwyz = w_y[POSITION_INDEX_Y(k+kkk,j+kk,i)];
@@ -711,13 +718,13 @@ int main(int argc, char **argv) {
 							for(kk=1;kk<=5;kk++)
 							{
 								//if ( u_x[POSITION_INDEX_X(k,j+kk,i) != u_z[POSITION_INDEX_Y(k,j+kk,i)]] ) printf("[Warining] i: %d j: %d k: %d", i, j, k);
-								tempuz2=tempuz2+c[kk-1][0]*(u_z[POSITION_INDEX_Z(k+kk,j,i)]+u_z[POSITION_INDEX_Z(k-kk,j,i)]);
+								tempuz2=tempuz2+c[0][kk-1]*(u_z[POSITION_INDEX_Z(k+kk,j,i)]+u_z[POSITION_INDEX_Z(k-kk,j,i)]);
 
 								// if ( v_x[POSITION_INDEX_X(k,j+kk,i) != v_z[POSITION_INDEX_Y(k,j+kk,i)]] ) printf("[Warining] i: %d j: %d k: %d", i, j, k);
-								tempvz2=tempvz2+c[kk-1][0]*(v_z[POSITION_INDEX_Z(k+kk,j,i)]+v_z[POSITION_INDEX_Z(k-kk,j,i)]);
+								tempvz2=tempvz2+c[0][kk-1]*(v_z[POSITION_INDEX_Z(k+kk,j,i)]+v_z[POSITION_INDEX_Z(k-kk,j,i)]);
 
 								// if ( w_x[POSITION_INDEX_X(k,j+kk,i) != w_z[POSITION_INDEX_Y(k,j+kk,i)]] ) printf("[Warining] i: %d j: %d k: %d", i, j, k);
-								tempwz2=tempwz2+c[kk-1][0]*(w_z[POSITION_INDEX_Z(k+kk,j,i)]+w_z[POSITION_INDEX_Z(k-kk,j,i)]);
+								tempwz2=tempwz2+c[0][kk-1]*(w_z[POSITION_INDEX_Z(k+kk,j,i)]+w_z[POSITION_INDEX_Z(k-kk,j,i)]);
 							} //for(kk=1;kk<=5;kk++) end
 
 							tempuz2=(tempuz2+c0*u_z[POSITION_INDEX_Z(k,j,i)])*vvs2_dtz_dtz;
@@ -730,7 +737,7 @@ int main(int argc, char **argv) {
 							{
 								for(kkk=1;kkk<=5;kkk++)
 								{
-									current_c = c[kkk-1][1+kk];
+									current_c = c[1+kk][kkk-1];
 
 									_tempuxz = u_z[POSITION_INDEX_Z(k+kkk,j,i+kk)];
 									_tempwxz = w_z[POSITION_INDEX_Z(k+kkk,j,i+kk)];
