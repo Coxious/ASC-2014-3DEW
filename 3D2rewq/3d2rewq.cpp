@@ -228,7 +228,7 @@ int main(int argc, char **argv) {
 	const int mic_used_size = pow(2.*((lt*dt*velmax)/unit+10.)+10.,3.);
 	const int mic_slice_size = pow(2.*((lt*dt*velmax)/unit+10.)+10.,2.);
 
-	printf("length: %fmic_slice_size:%d mic_used_size:%d\n",2.*((lt*dt*velmax)/unit+10.)+10.,mic_slice_size, mic_used_size);
+	// printf("length: %fmic_slice_size:%d mic_used_size:%d\n",2.*((lt*dt*velmax)/unit+10.)+10.,mic_slice_size, mic_used_size);
 
 	float *up_out = (float *)malloc(mic_slice_size * sizeof(float));
 
@@ -242,7 +242,7 @@ int main(int argc, char **argv) {
 		float sp=PIE*frequency*tt;
 		float fx=100000.*exp(-sp*sp)*(1.-2.*sp*sp);
 		wave[l]=fx;
-		printf("wave l:%d:%f",l,wave[l]);
+		// printf("wave l:%d:%f",l,wave[l]);
 	}
 
 	c0=-2.927222164;
@@ -262,15 +262,66 @@ int main(int argc, char **argv) {
 			c[j][2+i]=c[i][1]*c[j][1];
 
 #ifndef DEBUG_CPU_RUNNING
+		u_x = (float *)malloc(sizeof(float)*mic_used_size);
+		v_x = (float *)malloc(sizeof(float)*mic_used_size);
+		w_x = (float *)malloc(sizeof(float)*mic_used_size);
+		u_y = (float *)malloc(sizeof(float)*mic_used_size);
+		v_y = (float *)malloc(sizeof(float)*mic_used_size);
+		w_y = (float *)malloc(sizeof(float)*mic_used_size);
+		u_z = (float *)malloc(sizeof(float)*mic_used_size);
+		v_z = (float *)malloc(sizeof(float)*mic_used_size);
+		w_z = (float *)malloc(sizeof(float)*mic_used_size);
+		up  = (float *)malloc(sizeof(float)*mic_used_size);
+		up1 = (float *)malloc(sizeof(float)*mic_used_size);
+		up2 = (float *)malloc(sizeof(float)*mic_used_size);
+		vp  = (float *)malloc(sizeof(float)*mic_used_size);
+		vp1 = (float *)malloc(sizeof(float)*mic_used_size);
+		vp2 = (float *)malloc(sizeof(float)*mic_used_size);
+		wp  = (float *)malloc(sizeof(float)*mic_used_size);
+		wp1 = (float *)malloc(sizeof(float)*mic_used_size);
+		wp2 = (float *)malloc(sizeof(float)*mic_used_size);
+		us  = (float *)malloc(sizeof(float)*mic_used_size);
+		us1 = (float *)malloc(sizeof(float)*mic_used_size);
+		us2 = (float *)malloc(sizeof(float)*mic_used_size);
+		vs  = (float *)malloc(sizeof(float)*mic_used_size);
+		vs1 = (float *)malloc(sizeof(float)*mic_used_size);
+		vs2 = (float *)malloc(sizeof(float)*mic_used_size);
+		ws  = (float *)malloc(sizeof(float)*mic_used_size);
+		ws1 = (float *)malloc(sizeof(float)*mic_used_size);
+		ws2 = (float *)malloc(sizeof(float)*mic_used_size);
 	#pragma offload_transfer target(mic:0) \
-		nocopy(u_x,v_x,w_x,u_y,v_y,w_y,u_z,v_z,w_z,\
-				up ,up1,up2,vp ,vp1,vp2,wp ,wp1,wp2,us ,us1,us2,vs,\
-				vs1,vs2,ws ,ws1,ws2:length(mic_used_size) MIC_ALLOC) \
-		nocopy(up_out:length(mic_slice_size) MIC_ALLOC)\
-		in(wave:length(lt) MIC_ALLOC) \
-		in(c: MIC_ALLOC) signal(c)
+        nocopy(u_x:length(mic_used_size) MIC_ALLOC) \
+        nocopy(v_x:length(mic_used_size) MIC_ALLOC) \
+        nocopy(w_x:length(mic_used_size) MIC_ALLOC) \
+        nocopy(u_y:length(mic_used_size) MIC_ALLOC) \
+        nocopy(v_y:length(mic_used_size) MIC_ALLOC) \
+        nocopy(w_y:length(mic_used_size) MIC_ALLOC) \
+        nocopy(u_z:length(mic_used_size) MIC_ALLOC) \
+        nocopy(v_z:length(mic_used_size) MIC_ALLOC) \
+        nocopy(w_z:length(mic_used_size) MIC_ALLOC) \
+        nocopy(up :length(mic_used_size) MIC_ALLOC) \
+        nocopy(up1:length(mic_used_size) MIC_ALLOC) \
+        nocopy(up2:length(mic_used_size) MIC_ALLOC) \
+        nocopy(vp :length(mic_used_size) MIC_ALLOC) \
+        nocopy(vp1:length(mic_used_size) MIC_ALLOC) \
+        nocopy(vp2:length(mic_used_size) MIC_ALLOC) \
+        nocopy(wp :length(mic_used_size) MIC_ALLOC) \
+        nocopy(wp1:length(mic_used_size) MIC_ALLOC) \
+        nocopy(wp2:length(mic_used_size) MIC_ALLOC) \
+        nocopy(us :length(mic_used_size) MIC_ALLOC) \
+        nocopy(us1:length(mic_used_size) MIC_ALLOC) \
+        nocopy(us2:length(mic_used_size) MIC_ALLOC) \
+        nocopy(vs :length(mic_used_size) MIC_ALLOC) \
+        nocopy(vs1:length(mic_used_size) MIC_ALLOC) \
+        nocopy(vs2:length(mic_used_size) MIC_ALLOC) \
+        nocopy(ws :length(mic_used_size) MIC_ALLOC) \
+        nocopy(ws1:length(mic_used_size) MIC_ALLOC) \
+        nocopy(ws2:length(mic_used_size) MIC_ALLOC) \
+        nocopy(up_out:length(mic_slice_size) MIC_ALLOC)\
+        in(wave:length(lt) MIC_ALLOC) \
+        in(c: MIC_ALLOC) signal(c)
 	{
-		printf("Transfer finished!\n");
+		// printf("Transfer finished!\n");
 	}
 
 #else
@@ -346,7 +397,7 @@ int main(int argc, char **argv) {
 		nMicMaxYLength = nback   - nfront;
 		nMicMaxZLength = nbottom - ntop;
 
-		printf("MAX_X: %d, MAX_Y: %d, MAX_Z: %d", nMicMaxXLength, nMicMaxYLength, nMicMaxZLength);
+		// printf("MAX_X: %d, MAX_Y: %d, MAX_Z: %d", nMicMaxXLength, nMicMaxYLength, nMicMaxZLength);
 
 
 #ifndef DEBUG_CPU_RUNNING
@@ -357,13 +408,14 @@ int main(int argc, char **argv) {
 				vs1,vs2,ws ,ws1,ws2) \
 			nocopy(wave) \
 			nocopy(c) wait(c)
-			#pragma intel optimization_parameter target_arch=IA32
 		{
-			printf("MIC started!\n");
+			// printf("MIC started!\n");
 #else
 		{
-			printf("CPU started!\n");
+			// printf("CPU started!\n");
 #endif
+            omp_set_num_threads(200);
+
 			memset(u_x,0,sizeof(float)*mic_used_size);
 			memset(v_x,0,sizeof(float)*mic_used_size);
 			memset(w_x,0,sizeof(float)*mic_used_size);
@@ -408,8 +460,8 @@ int main(int argc, char **argv) {
 				if(n_mic_top<5) n_mic_top=5;
 				if(n_mic_bottom>nz-5) n_mic_bottom=nz-5;
 
-				printf("[L]Starting l xmax:%d n_mic_left:%d n_mic_right:%d n_mic_top:%d n_mic_bottom:%d n_mic_front:%d n_mic_back:%d....%d\n",
-					xmax,n_mic_left,n_mic_right,n_mic_top,n_mic_bottom,n_mic_front,n_mic_back,l);
+				// printf("[L]Starting l xmax:%d n_mic_left:%d n_mic_right:%d n_mic_top:%d n_mic_bottom:%d n_mic_front:%d n_mic_back:%d....%d\n",
+				// 	xmax,n_mic_left,n_mic_right,n_mic_top,n_mic_bottom,n_mic_front,n_mic_back,l);
 
 				//
 				//	此处n_mic_XXX 系列变量同Host上的实际值相等。
@@ -419,12 +471,13 @@ int main(int argc, char **argv) {
 				nMicXLength = n_mic_right  - --n_mic_left 	;
 				nMicYLength = n_mic_back   - --n_mic_front  ;
 				nMicZLength = n_mic_bottom - --n_mic_top 	;
-				printf("Len_X: %d, Len_Y: %d, Len_Z: %d\n", nMicXLength, nMicYLength, nMicZLength );
-		 		printf("Size to use now : %d\n",(nMicXLength + 10)*(nMicZLength + 10)*(nMicYLength + 10));
+				// printf("Len_X: %d, Len_Y: %d, Len_Z: %d\n", nMicXLength, nMicYLength, nMicZLength );
+		 	// 	printf("Size to use now : %d\n",(nMicXLength + 10)*(nMicZLength + 10)*(nMicYLength + 10));
 
 				// printf("nX: %d nY: %d nZ: %d \n",nright - nleft,nback - nfront,nbottom - ntop);
 
 				// ZYX
+                #pragma parallel for private(i,j,k)
 				for(k=5+n_mic_top - ntop;k<n_mic_top - ntop + nMicZLength+5;k++)
 				{
 					vvp2=vpp2(k);
@@ -468,6 +521,7 @@ int main(int argc, char **argv) {
 							tempwxz=0.0f;
 							tempwyz=0.0f;
 
+// #ifdef DEBUG_CPU_RUNNING
 							for(kk=1;kk<=5;kk++)
 							{
 								tempux2=tempux2+c[kk-1][0]*(u_x[POSITION_INDEX_X(k,j,i+kk)]+u_x[POSITION_INDEX_X(k,j,i-kk)]);
@@ -512,15 +566,19 @@ int main(int argc, char **argv) {
 							vs[nIndex] = tempvx2 - tempuxy * vvs2_dtz_dtx;
 							ws[nIndex] = tempwx2;
 							wp[nIndex] = px * wave[l-1];
-							//Debug
-							if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
-								printf("[X]%f wave:%f px:%f should be %f\n", wp[nIndex],wave[l-1],px,wave[l-1]*px);
+//#else
+
+//#endif
+							// //Debug
+							// if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
+							// 	printf("[X]%f wave:%f px:%f should be %f\n", wp[nIndex],wave[l-1],px,wave[l-1]*px);
 
 						}
 					}
 				}
 
 				// X Z Y
+                #pragma parallel for private(i,j,k)
 				for(i=5+n_mic_left-nleft;i<n_mic_left-nleft+nMicXLength+5;i++) {
 					for(k=5+n_mic_top - ntop;k<nMicZLength+n_mic_top - ntop+5;k++) {
 						vvp2=vpp2(k);
@@ -608,6 +666,7 @@ int main(int argc, char **argv) {
 				}
 
 				// YXZ
+                #pragma parallel for private(i,j,k)
 				for(j=5+n_mic_front-nfront;j<n_mic_front-nfront+nMicYLength+5;j++) {
 					for(i=5+n_mic_left-nleft;i<n_mic_left-nleft+nMicXLength+5;i++) {
 						for(k=5+n_mic_top - ntop;k<n_mic_top - ntop+nMicZLength+5;k++)
@@ -690,12 +749,13 @@ int main(int argc, char **argv) {
 							vs[nIndex_X] += tempvz2;
 							ws[nIndex_X] += - tempuxz * vvs2_dtz_dtx;
 							// DEBUG
-							if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
-								printf("[Z]%f\n", wp[nIndex]);
+							// if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
+							// 	printf("[Z]%f\n", wp[nIndex]);
 						}
 					}
 				}
 
+                #pragma parallel for private(i,j,k)
 				for(k=5+n_mic_top - ntop;k<n_mic_top - ntop+nMicZLength+5;k++)
 					for(j=5+n_mic_front-nfront;j<n_mic_front-nfront+nMicYLength+5;j++)
 						for(i=5+n_mic_left-nleft;i<n_mic_left-nleft+nMicXLength+5;i++)
@@ -708,8 +768,8 @@ int main(int argc, char **argv) {
 							us[nIndex] += 2 * us1[nIndex] - us2[nIndex];
 							vs[nIndex] += 2 * vs1[nIndex] - vs2[nIndex];
 							ws[nIndex] += 2 * ws1[nIndex] - ws2[nIndex];
-							if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
-								printf("[Final]%f\n", wp[nIndex]);
+							// if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
+							// 	printf("[Final]%f\n", wp[nIndex]);
 							u_x[POSITION_INDEX_X(k,j,i)] = up[POSITION_INDEX_X(k,j,i)] + us[POSITION_INDEX_X(k,j,i)];
 							v_x[POSITION_INDEX_X(k,j,i)] = vp[POSITION_INDEX_X(k,j,i)] + vs[POSITION_INDEX_X(k,j,i)];
 							w_x[POSITION_INDEX_X(k,j,i)] = wp[POSITION_INDEX_X(k,j,i)] + ws[POSITION_INDEX_X(k,j,i)];
@@ -717,11 +777,11 @@ int main(int argc, char **argv) {
 							u_z[POSITION_INDEX_Z(k,j,i)] = u_y[POSITION_INDEX_Y(k,j,i)] = u_x[POSITION_INDEX_X(k,j,i)];
 							v_z[POSITION_INDEX_Z(k,j,i)] = v_y[POSITION_INDEX_Y(k,j,i)] = v_x[POSITION_INDEX_X(k,j,i)];
 							w_z[POSITION_INDEX_Z(k,j,i)] = w_y[POSITION_INDEX_Y(k,j,i)] = w_x[POSITION_INDEX_X(k,j,i)];
-							if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
-								printf("[Final]%f\n", w_x[nIndex]);
+							// if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
+							// 	printf("[Final]%f\n", w_x[nIndex]);
 						}//for(i=nleft;i<nright;i++) end
 
-				printf("Start waiting....%d\n",l);
+				// printf("Start waiting....%d\n",l);
 #ifndef DEBUG_CPU_RUNNING
 #				pragma offload_wait target(mic:0) wait(up_out)
 				{}
@@ -733,7 +793,7 @@ int main(int argc, char **argv) {
 				swap_temp = us2; us2 = us1; us1 = us; us = swap_temp;
 				swap_temp = vs2; vs2 = vs1; vs1 = vs; vs = swap_temp;
 				swap_temp = ws2; ws2 = ws1; ws1 = ws; ws = swap_temp;
-				printf("[L]Finished %d\n",l);
+				// printf("[L]Finished %d\n",l);
 			}//for(l=1;l<=lt;l++) end
 		}//MIC END
 
@@ -744,19 +804,19 @@ int main(int argc, char **argv) {
 #endif
 		{
 
-		printf("To reindex the data!");
+		// printf("To reindex the data!");
 		for(j=5;j<nMicYLength+5;j++)
 			for(i=5;i<nMicXLength+5;i++)
 			{
 				up_out[POSITION_INDEX_X(0,j,i)] = up1[POSITION_INDEX_X(169-ntop+5,j,i)];
 //				up_out[i]=((float*)(up1+(169-ntop+5)*mic_slice_size))[i];
-				printf("up_out i:%d j:%d %f\n",i,j,up_out[POSITION_INDEX_X(0,j,i)]);
+				// printf("up_out i:%d j:%d %f\n",i,j,up_out[POSITION_INDEX_X(0,j,i)]);
 			}
 		}
 
 		#pragma offload_wait target(mic:0) wait(up_out)
 
-		printf("To write the data!");
+		// printf("To write the data!");
         for(j=nfront;j<nback;j++)
             for(i=nleft;i<nright;i++){
             	to_write[POSITION_INDEX_HOST_X(0,j,i)] =up_out[POSITION_INDEX_X(0,j+5-nfront,i+5-nleft)];
@@ -813,4 +873,3 @@ int main(int argc, char **argv) {
 	system(tmp);
 	return 1;
 }
-
