@@ -5,11 +5,13 @@
 #include <string.h>
 #include "sys/time.h"
 
+#include <omp.h>
+
 #define PIE 3.1415926
 
-//#define DEBUG_CPU_RUNNING
+#define DEBUG_NO_PARALLEL
 
-//#define POSITION_INDEX(_z,_y,_x)          ((_z)*ny*nx + (_y)*nx + (_x))
+//#define DEBUG_CPU_RUNNING
 
 #define POSITION_INDEX_HOST_X(_z,_y,_x)        ((_z)*ny*nx + (_y)*nx + (_x))
 #define POSITION_INDEX_HOST_Y(_z,_y,_x)        ((_x)*nz*ny + (_z)*ny + (_y))
@@ -414,7 +416,7 @@ int main(int argc, char **argv) {
 		{
 			// printf("CPU started!\n");
 #endif
-            omp_set_num_threads(200);
+            // omp_set_num_threads(200);
 
 			memset(u_x,0,sizeof(float)*mic_used_size);
 			memset(v_x,0,sizeof(float)*mic_used_size);
@@ -477,7 +479,9 @@ int main(int argc, char **argv) {
 				// printf("nX: %d nY: %d nZ: %d \n",nright - nleft,nback - nfront,nbottom - ntop);
 
 				// ZYX
-                #pragma parallel for private(i,j,k)
+                #ifndef DEBUG_NO_PARALLEL
+                #pragma omp parallel for private(i,j,k)
+                #endif
 				for(k=5+n_mic_top - ntop;k<n_mic_top - ntop + nMicZLength+5;k++)
 				{
 					vvp2=vpp2(k);
@@ -578,7 +582,9 @@ int main(int argc, char **argv) {
 				}
 
 				// X Z Y
-                #pragma parallel for private(i,j,k)
+                #ifndef DEBUG_NO_PARALLEL
+                #pragma omp parallel for private(i,j,k)
+                #endif
 				for(i=5+n_mic_left-nleft;i<n_mic_left-nleft+nMicXLength+5;i++) {
 					for(k=5+n_mic_top - ntop;k<nMicZLength+n_mic_top - ntop+5;k++) {
 						vvp2=vpp2(k);
@@ -666,7 +672,9 @@ int main(int argc, char **argv) {
 				}
 
 				// YXZ
-                #pragma parallel for private(i,j,k)
+                #ifndef DEBUG_NO_PARALLEL
+                #pragma omp parallel for private(i,j,k)
+                #endif
 				for(j=5+n_mic_front-nfront;j<n_mic_front-nfront+nMicYLength+5;j++) {
 					for(i=5+n_mic_left-nleft;i<n_mic_left-nleft+nMicXLength+5;i++) {
 						for(k=5+n_mic_top - ntop;k<n_mic_top - ntop+nMicZLength+5;k++)
@@ -755,7 +763,9 @@ int main(int argc, char **argv) {
 					}
 				}
 
-                #pragma parallel for private(i,j,k)
+                #ifndef DEBUG_NO_PARALLEL
+                #pragma omp parallel for private(i,j,k)
+                #endif
 				for(k=5+n_mic_top - ntop;k<n_mic_top - ntop+nMicZLength+5;k++)
 					for(j=5+n_mic_front-nfront;j<n_mic_front-nfront+nMicYLength+5;j++)
 						for(i=5+n_mic_left-nleft;i<n_mic_left-nleft+nMicXLength+5;i++)
@@ -814,8 +824,9 @@ int main(int argc, char **argv) {
 			}
 		}
 
+#ifndef DEBUG_CPU_RUNNING
 		#pragma offload_wait target(mic:0) wait(up_out)
-
+#endif
 		// printf("To write the data!");
         for(j=nfront;j<nback;j++)
             for(i=nleft;i<nright;i++){
