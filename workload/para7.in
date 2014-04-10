@@ -1,0 +1,16 @@
+nx=360
+ny=360
+nz=280
+lt=500
+nedge=50
+ncx_shot1=180
+ncy_shot1=180
+ncz_shot=120
+nxshot=64
+nyshot=24
+frequency=20.000000
+velmax=3500.000000
+dt=0.001000
+unit=10.000000
+dxshot=1
+dyshot=1
