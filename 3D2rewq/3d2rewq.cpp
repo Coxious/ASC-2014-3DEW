@@ -491,7 +491,7 @@ void calc_shot (
 
     int cpu_z_length = nMicMaxZLength - mic_z_length;
 
-    k_mic_begin = nbottom - 5 - mic_z_length;
+    k_mic_begin = nbottom - 5 - mic_z_length - ntop;
 
     mic_u = &u[POSITION_INDEX_X ( 0, 0, k_mic_begin - 5 )];
     mic_v = &v[POSITION_INDEX_X ( 0, 0, k_mic_begin - 5 )];
