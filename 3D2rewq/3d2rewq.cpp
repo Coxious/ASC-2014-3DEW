@@ -13,7 +13,7 @@
 
 #define DEBUG_NO_PARALLEL
 
-#define USE_MIC_MAX_LENGTH_THRESHOLD	8000
+#define USE_MIC_MAX_LENGTH_THRESHOLD 50	
 
 #define MIC_CPU_RATE	0.6
 
@@ -36,6 +36,14 @@
 #else
 #	define MIC_VAR
 #endif
+
+
+#ifdef __MIC__
+#define __SHOW__(_x) for(int jjj=0;jjj<1000;jjj++) printf("Hit here!!!! %d \n", _x);
+#else
+#define __SHOW__(_x)
+#endif
+
 
 #define ROUND_TO_SIZE(_length, _alignment)    \
 			(((_length) + ((_alignment)-1)) & ~((_alignment) - 1))
@@ -236,6 +244,7 @@ MIC_VAR void calc_single_l (
         vvp2_dtz_dtz = vvp2 * dtz * dtz;
         vvp2_dtz_dtx = vvp2 * dtz * dtx;
         vvs2_dtz_dtx = vvs2 * dtz * dtx;
+
 
         for ( int j = j_begin; j < j_end; j++ ) {
             for ( int i = i_begin; i < i_end; i++ ) {
@@ -608,7 +617,18 @@ void calc_shot (
 
             if ( USE_MIC_MAX_LENGTH_THRESHOLD == nMicXLength ) {
 
+                double sum=0;
+                printf("ON CPU %d %d %d %lf\n", i_begin, j_begin, k_mic_begin, sum);
+                for(int i = i_begin; i<=i_end; i++) {
+                    for(int j = j_begin; j<= j_end; j++) {
+                        for ( int k = k_mic_begin; k<= k_mic_end; k++  ) {
+                            sum+=mic_u[POSITION_INDEX_X(k,j,i)]+mic_v[POSITION_INDEX_X(k,j,i)]+mic_w[POSITION_INDEX_X(k,j,i)];
+                        }
+                    }
+                }
+                printf("ON CPU %lf\n", sum);
                 copy_length = mic_slice_size * ( mic_z_length + 10 );
+                printf("length: %d\n", copy_length);
 
 #pragma offload_transfer target(mic:0)\
 					in(mic_u  :length(copy_length) MIC_ALLOC)\
@@ -632,10 +652,25 @@ void calc_shot (
 					in(mic_ws :length(copy_length) MIC_ALLOC)\
 					in(mic_ws1:length(copy_length) MIC_ALLOC)\
 					in(mic_ws2:length(copy_length) MIC_ALLOC)\
+                    in(wave   :length(lt) MIC_ALLOC) \
 					nocopy ( mic_exchange_part_u: length ( 5 * mic_slice_size ) MIC_ALLOC )\
                     nocopy ( mic_exchange_part_v: length ( 5 * mic_slice_size ) MIC_ALLOC )\
                     nocopy ( mic_exchange_part_w: length ( 5 * mic_slice_size ) MIC_ALLOC )\
                     signal ( mic_u )
+
+#pragma offload target(mic:0)\  
+                nocopy(mic_u :length(copy_length) MIC_REUSE)\
+                wait(mic_u) 
+                {
+                    double sum=0;
+                    for(int i = i_begin; i<=i_end; i++) {
+                        for(int j = j_begin; j<= j_end; j++) {
+                            for ( int k = 5; k<= 5+mic_z_length; k++  ) {
+                                printf("%d %d %d %lf\n",i, j, k, mic_u[POSITION_INDEX_X(k,j,i)]);
+                            }
+                        }
+                    }   
+                }
             } else {
 
                 copy_length = mic_slice_size * ( 5 );
@@ -683,7 +718,6 @@ void calc_shot (
                                 mic_us1 , mic_us2 , mic_vs  , mic_vs1 , mic_vs2 ,
                                 mic_ws  , mic_ws1 , mic_ws2 , mic_u   , mic_v   , mic_w,
                                 nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront, ncz_shot_shaddow - cpu_z_length, l );
-                for(int jjj = 1; jjj<=10000; jjj++) printf("AFTER CALC");
 
                 memcpy ( mic_exchange_part_u, mic_u + 5 * mic_slice_size_shaddow, sizeof ( double ) * 5 * mic_slice_size_shaddow );
                 memcpy ( mic_exchange_part_v, mic_v + 5 * mic_slice_size_shaddow, sizeof ( double ) * 5 * mic_slice_size_shaddow );
