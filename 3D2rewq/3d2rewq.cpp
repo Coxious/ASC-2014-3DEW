@@ -9,7 +9,7 @@
 
 #define PIE 3.1415926
 
-#define DEBUG_CPU_RUNNING
+// #define DEBUG_CPU_RUNNING
 
 #define DEBUG_NO_PARALLEL
 
@@ -608,27 +608,27 @@ void calc_shot (
                 copy_length = mic_slice_size * ( mic_z_length + 10 );
 
 #pragma offload_transfer target(mic:0)\
-					in(mic_u  :length(copy_length MIC_ALLOC))\
-					in(mic_v  :length(copy_length MIC_ALLOC))\
-					in(mic_w  :length(copy_length MIC_ALLOC))\
-					in(mic_up :length(copy_length MIC_ALLOC))\
-					in(mic_up1:length(copy_length MIC_ALLOC))\
-					in(mic_up2:length(copy_length MIC_ALLOC))\
-					in(mic_vp :length(copy_length MIC_ALLOC))\
-					in(mic_vp1:length(copy_length MIC_ALLOC))\
-					in(mic_vp2:length(copy_length MIC_ALLOC))\
-					in(mic_wp :length(copy_length MIC_ALLOC))\
-					in(mic_wp1:length(copy_length MIC_ALLOC))\
-					in(mic_wp2:length(copy_length MIC_ALLOC))\
-					in(mic_us :length(copy_length MIC_ALLOC))\
-					in(mic_us1:length(copy_length MIC_ALLOC))\
-					in(mic_us2:length(copy_length MIC_ALLOC))\
-					in(mic_vs :length(copy_length MIC_ALLOC))\
-					in(mic_vs1:length(copy_length MIC_ALLOC))\
-					in(mic_vs2:length(copy_length MIC_ALLOC))\
-					in(mic_ws :length(copy_length MIC_ALLOC))\
-					in(mic_ws1:length(copy_length MIC_ALLOC))\
-					in(mic_ws2:length(copy_length MIC_ALLOC))\
+					in(mic_u  :length(copy_length) MIC_ALLOC)\
+					in(mic_v  :length(copy_length) MIC_ALLOC)\
+					in(mic_w  :length(copy_length) MIC_ALLOC)\
+					in(mic_up :length(copy_length) MIC_ALLOC)\
+					in(mic_up1:length(copy_length) MIC_ALLOC)\
+					in(mic_up2:length(copy_length) MIC_ALLOC)\
+					in(mic_vp :length(copy_length) MIC_ALLOC)\
+					in(mic_vp1:length(copy_length) MIC_ALLOC)\
+					in(mic_vp2:length(copy_length) MIC_ALLOC)\
+					in(mic_wp :length(copy_length) MIC_ALLOC)\
+					in(mic_wp1:length(copy_length) MIC_ALLOC)\
+					in(mic_wp2:length(copy_length) MIC_ALLOC)\
+					in(mic_us :length(copy_length) MIC_ALLOC)\
+					in(mic_us1:length(copy_length) MIC_ALLOC)\
+					in(mic_us2:length(copy_length) MIC_ALLOC)\
+					in(mic_vs :length(copy_length) MIC_ALLOC)\
+					in(mic_vs1:length(copy_length) MIC_ALLOC)\
+					in(mic_vs2:length(copy_length) MIC_ALLOC)\
+					in(mic_ws :length(copy_length) MIC_ALLOC)\
+					in(mic_ws1:length(copy_length) MIC_ALLOC)\
+					in(mic_ws2:length(copy_length) MIC_ALLOC)\
 					nocopy ( mic_exchange_part_u: length ( 5 * mic_slice_size ) MIC_ALLOC )\
                     nocopy ( mic_exchange_part_v: length ( 5 * mic_slice_size ) MIC_ALLOC )\
                     nocopy ( mic_exchange_part_w: length ( 5 * mic_slice_size ) MIC_ALLOC )\
@@ -638,9 +638,9 @@ void calc_shot (
                 copy_length = mic_slice_size * ( 5 );
 
 #pragma offload_transfer target(mic:0)\
-					in(mic_u  :length(copy_length MIC_REUSE))\
-					in(mic_v  :length(copy_length MIC_REUSE))\
-					in(mic_w  :length(copy_length MIC_REUSE))\
+					in(mic_u  :length(copy_length) MIC_REUSE)\
+					in(mic_v  :length(copy_length) MIC_REUSE)\
+					in(mic_w  :length(copy_length) MIC_REUSE)\
 					signal(mic_u)
             }
 
@@ -708,10 +708,7 @@ void calc_shot (
     free ( mic_exchange_part );
 }
 
-
-
 int calc_slice_on_mic();
-
 
 int main ( int argc, char **argv ) {
 
