@@ -481,11 +481,11 @@ void calc_shot (
     memset ( ws1, 0, sizeof ( double ) *mic_used_size );
     memset ( ws2, 0, sizeof ( double ) *mic_used_size );
 
-    mic_exchange_part_u = ( double * ) malloc ( sizeof ( double ) * mic_slice_size * 5 );
+    double *mic_exchange_part_u = ( double * ) malloc ( sizeof ( double ) * mic_slice_size * 5 );
 
-    mic_exchange_part_v = ( double * ) malloc ( sizeof ( double ) * mic_slice_size * 5 );
+    double *mic_exchange_part_v = ( double * ) malloc ( sizeof ( double ) * mic_slice_size * 5 );
 
-    mic_exchange_part_ = ( double * ) malloc ( sizeof ( double ) * mic_slice_size * 5 );
+    double *mic_exchange_part_w = ( double * ) malloc ( sizeof ( double ) * mic_slice_size * 5 );
 
     mic_z_length = MIC_CPU_RATE * nMicMaxZLength;
 
@@ -605,9 +605,9 @@ void calc_shot (
 
             if ( USE_MIC_MAX_LENGTH_THRESHOLD == nMicXLength ) {
 
-                copy_length = mic_slice_size * ( mic_z_length + 10 ) );
+                copy_length = mic_slice_size * ( mic_z_length + 10 );
 
-#pragma offlad_transfer target(mic:0)\
+#pragma offload_transfer target(mic:0)\
 					in(mic_u  :length(copy_length MIC_ALLOC))\
 					in(mic_v  :length(copy_length MIC_ALLOC))\
 					in(mic_w  :length(copy_length MIC_ALLOC))\
@@ -629,23 +629,22 @@ void calc_shot (
 					in(mic_ws :length(copy_length MIC_ALLOC))\
 					in(mic_ws1:length(copy_length MIC_ALLOC))\
 					in(mic_ws2:length(copy_length MIC_ALLOC))\
-					nocopy(mic_exchange_part_u:length(5*mic_slice_size) MIC_ALLOC)
-nocopy ( mic_exchange_part_u: length ( 5 * mic_slice_size ) MIC_ALLOC )
-nocopy ( mic_exchange_part_u: length ( 5 * mic_slice_size ) MIC_ALLOC )
-                signal ( mic_u )
-
+					nocopy ( mic_exchange_part_u: length ( 5 * mic_slice_size ) MIC_ALLOC )\
+                    nocopy ( mic_exchange_part_v: length ( 5 * mic_slice_size ) MIC_ALLOC )\
+                    nocopy ( mic_exchange_part_w: length ( 5 * mic_slice_size ) MIC_ALLOC )\
+                    signal ( mic_u )
             } else {
 
-                copy_length = mic_slice_size * ( 5 ) );
+                copy_length = mic_slice_size * ( 5 );
 
-#pragma offlad_transfer target(mic:0)\
+#pragma offload_transfer target(mic:0)\
 					in(mic_u  :length(copy_length MIC_REUSE))\
 					in(mic_v  :length(copy_length MIC_REUSE))\
 					in(mic_w  :length(copy_length MIC_REUSE))\
 					signal(mic_u)
             }
 
-#pragma offlad target(mic:0) \
+#pragma offload target(mic:0) \
 					out(mic_exchange_part_u:length(5*mic_slice_size) MIC_REUSE)\
 					out(mic_exchange_part_v:length(5*mic_slice_size) MIC_REUSE)\
 					out(mic_exchange_part_w:length(5*mic_slice_size) MIC_REUSE)\
@@ -664,30 +663,12 @@ nocopy ( mic_exchange_part_u: length ( 5 * mic_slice_size ) MIC_ALLOC )
                 memcpy ( mic_exchange_part_w, mic_w + 5 * mic_slice_size, sizeof ( double ), 5 * mic_slice_size );
 
                 double *swap_temp;
-                swap_temp = mic_up2;
-                mic_up2 = mic_up1;
-                mic_up1 = mic_up;
-                mic_up = swap_temp;
-                swap_temp = mic_vp2;
-                mic_vp2 = mic_vp1;
-                mic_vp1 = mic_vp;
-                mic_vp = swap_temp;
-                swap_temp = mic_wp2;
-                mic_wp2 = mic_wp1;
-                mic_wp1 = mic_wp;
-                mic_wp = swap_temp;
-                swap_temp = mic_us2;
-                mic_us2 = mic_us1;
-                mic_us1 = mic_us;
-                mic_us = swap_temp;
-                swap_temp = mic_vs2;
-                mic_vs2 = mic_vs1;
-                mic_vs1 = mic_vs;
-                mic_vs = swap_temp;
-                swap_temp = mic_ws2;
-                mic_ws2 = mic_ws1;
-                mic_ws1 = mic_ws;
-                mic_ws = swap_temp;
+                swap_temp = mic_up2; mic_up2 = mic_up1; mic_up1 = mic_up; mic_up = swap_temp;
+                swap_temp = mic_vp2; mic_vp2 = mic_vp1; mic_vp1 = mic_vp; mic_vp = swap_temp;
+                swap_temp = mic_wp2; mic_wp2 = mic_wp1; mic_wp1 = mic_wp; mic_wp = swap_temp;
+                swap_temp = mic_us2; mic_us2 = mic_us1; mic_us1 = mic_us; mic_us = swap_temp;
+                swap_temp = mic_vs2; mic_vs2 = mic_vs1; mic_vs1 = mic_vs; mic_vs = swap_temp;
+                swap_temp = mic_ws2; mic_ws2 = mic_ws1; mic_ws1 = mic_ws; mic_ws = swap_temp;
             }
 
             calc_single_l ( i_begin, i_end, j_begin, j_end, k_begin, k_end,
@@ -698,30 +679,12 @@ nocopy ( mic_exchange_part_u: length ( 5 * mic_slice_size ) MIC_ALLOC )
                             nMicMaxXLength, nMicMaxYLength, nMicMaxZLength, ntop, nleft, nfront );
 
             double *swap_temp;
-            swap_temp = up2;
-            up2 = up1;
-            up1 = up;
-            up = swap_temp;
-            swap_temp = vp2;
-            vp2 = vp1;
-            vp1 = vp;
-            vp = swap_temp;
-            swap_temp = wp2;
-            wp2 = wp1;
-            wp1 = wp;
-            wp = swap_temp;
-            swap_temp = us2;
-            us2 = us1;
-            us1 = us;
-            us = swap_temp;
-            swap_temp = vs2;
-            vs2 = vs1;
-            vs1 = vs;
-            vs = swap_temp;
-            swap_temp = ws2;
-            ws2 = ws1;
-            ws1 = ws;
-            ws = swap_temp;
+            swap_temp = up2; up2 = up1; up1 = up; up = swap_temp;
+            swap_temp = vp2; vp2 = vp1; vp1 = vp; vp = swap_temp;
+            swap_temp = wp2; wp2 = wp1; wp1 = wp; wp = swap_temp;
+            swap_temp = us2; us2 = us1; us1 = us; us = swap_temp;
+            swap_temp = vs2; vs2 = vs1; vs1 = vs; vs = swap_temp;
+            swap_temp = ws2; ws2 = ws1; ws1 = ws; ws = swap_temp;
 
 #pragma offload_wait target(mic:0) wait(mic_exchange_part_w)
 
@@ -832,3 +795,4 @@ int main ( int argc, char **argv ) {
     system ( tmp );
     return 1;
 }
+
