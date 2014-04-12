@@ -13,7 +13,7 @@
 
 #define DEBUG_NO_PARALLEL
 
-#define USE_MIC_MAX_LENGTH_THRESHOLD	80
+#define USE_MIC_MAX_LENGTH_THRESHOLD	8000
 
 #define MIC_CPU_RATE	0.6
 
@@ -558,6 +558,7 @@ void calc_shot (
 
             k_begin	= 5 + n_mic_top - ntop;
             k_end	= n_mic_top - ntop + nMicZLength + 5;
+            printf("%d %d\n", k_begin, k_end);
 
             //
             // Do normal way
@@ -570,7 +571,7 @@ void calc_shot (
                             vp2 , wp  , wp1 , wp2 , us  ,
                             us1 , us2 , vs  , vs1 , vs2 ,
                             ws  , ws1 , ws2 , u   , v   , w,
-                            nMicMaxXLength, nMicMaxYLength, nMicMaxZLength, ntop, nleft, nfront, l );
+                            nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront, ncz_shot_shaddow, l );
 
             double *swap_temp;
             swap_temp = up2;
@@ -602,6 +603,8 @@ void calc_shot (
             k_begin	= 5 + n_mic_top - ntop;
             k_end = k_mic_begin - 1;
             k_mic_end = n_mic_top - ntop + +5;
+            printf("%d %d\n", k_begin, k_end);
+            printf ( "l %d started normal nMicMaxLength %d %d %d\n", l, nMicXLength, nMicYLength, nMicZLength );
 
             if ( USE_MIC_MAX_LENGTH_THRESHOLD == nMicXLength ) {
 
@@ -672,12 +675,15 @@ void calc_shot (
 					wait(mic_u)\
 					signal(mic_exchange_part_w)
             {
+                printf("%d %d %d\n", mic_exchange_part_u, mic_exchange_part_v, mic_exchange_part_w);
+                for(int jjj = 1; jjj<=1; jjj++) printf("%x %x %x\n", mic_u, mic_v, mic_w);
                 calc_single_l ( i_begin, i_end, j_begin, j_end, 5, 5 + mic_z_length,
                                 mic_up  , mic_up1 , mic_up2 , mic_vp  , mic_vp1 ,
                                 mic_vp2 , mic_wp  , mic_wp1 , mic_wp2 , mic_us  ,
                                 mic_us1 , mic_us2 , mic_vs  , mic_vs1 , mic_vs2 ,
                                 mic_ws  , mic_ws1 , mic_ws2 , mic_u   , mic_v   , mic_w,
                                 nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront, ncz_shot_shaddow - cpu_z_length, l );
+                for(int jjj = 1; jjj<=10000; jjj++) printf("AFTER CALC");
 
                 memcpy ( mic_exchange_part_u, mic_u + 5 * mic_slice_size_shaddow, sizeof ( double ) * 5 * mic_slice_size_shaddow );
                 memcpy ( mic_exchange_part_v, mic_v + 5 * mic_slice_size_shaddow, sizeof ( double ) * 5 * mic_slice_size_shaddow );
