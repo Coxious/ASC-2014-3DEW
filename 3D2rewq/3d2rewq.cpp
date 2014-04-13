@@ -439,7 +439,6 @@ void calc_shot (
     double * mic_u;
     double * mic_v;
     double * mic_w;
-    double * mic_exchange_part;
     double * mic_upout;
     int mic_z_length;
     int copy_length ;
@@ -619,19 +618,19 @@ void calc_shot (
 
             if ( USE_MIC_MAX_LENGTH_THRESHOLD == nMicXLength && !init_mic_flag) {
 
-                init_mic_flag = 1;
-                double sum=0;
-                printf("ON CPU %d %d %d %lf\n", i_begin, j_begin, k_mic_begin, sum);
-                for(int i = i_begin; i<=i_end; i++) {
-                    for(int j = j_begin; j<= j_end; j++) {
-                        for ( int k = k_mic_begin; k<= k_mic_end; k++  ) {
-                            sum+=mic_u[POSITION_INDEX_X(k,j,i)]+mic_v[POSITION_INDEX_X(k,j,i)]+mic_w[POSITION_INDEX_X(k,j,i)];
-                        }
-                    }
-                }
-                printf("ON CPU %lf\n", sum);
-                copy_length = mic_slice_size * ( mic_z_length + 10 );
-                printf("length: %d\n", copy_length);
+                // init_mic_flag = 1;
+                // double sum=0;
+                // printf("ON CPU %d %d %d %lf\n", i_begin, j_begin, k_mic_begin, sum);
+                // for(int i = i_begin; i<=i_end; i++) {
+                //     for(int j = j_begin; j<= j_end; j++) {
+                //         for ( int k = k_mic_begin; k<= k_mic_end; k++  ) {
+                //             sum+=mic_u[POSITION_INDEX_X(k,j,i)]+mic_v[POSITION_INDEX_X(k,j,i)]+mic_w[POSITION_INDEX_X(k,j,i)];
+                //         }
+                //     }
+                // }
+                // printf("ON CPU %lf\n", sum);
+                // copy_length = mic_slice_size * ( mic_z_length + 10 );
+                // printf("length: %d\n", copy_length);
 
 #pragma offload_transfer target(mic:0)\
 					in(mic_u  :length(copy_length) MIC_ALLOC)\
@@ -769,12 +768,13 @@ void calc_shot (
     nocopy(mic_ws :length(copy_length) MIC_FREE)\
     nocopy(mic_ws1:length(copy_length) MIC_FREE)\
     nocopy(mic_ws2:length(copy_length) MIC_FREE)
-    
+
     copy_length = mic_slice_size * ( mic_z_length + 10 );
     if ( 169 >= k_mic_begin ) {
         // ON MIC
-#pragma offload target(mic:0) out(mic_up1 : length(copy_length) MIC_FREE) 
+#pragma offload target(mic:0) out(mic_up1 : length(copy_length) MIC_FREE) signal(mic_up1)
         {}
+#pragma offload_wait target(mic:0) wait(mic_up1)
     }
 
 
@@ -788,7 +788,9 @@ void calc_shot (
             to_write[POSITION_INDEX_HOST_X ( 0, j, i )] = up_out[POSITION_INDEX_X ( 0, j + 5 - nfront, i + 5 - nleft )];
         }
     free ( up_out );
-    free ( mic_exchange_part );
+    free ( mic_exchange_part_u );
+    free ( mic_exchange_part_v );
+    free ( mic_exchange_part_w );
 }
 
 int calc_slice_on_mic();
