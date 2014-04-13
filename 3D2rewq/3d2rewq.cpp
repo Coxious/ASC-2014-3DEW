@@ -13,7 +13,7 @@
 
 #define DEBUG_NO_PARALLEL
 
-#define USE_MIC_MAX_LENGTH_THRESHOLD 50	
+#define USE_MIC_MAX_LENGTH_THRESHOLD 	90
 
 #define MIC_CPU_RATE	0.6
 
@@ -403,6 +403,8 @@ void calc_shot (
     int lStart, int lEnd,
     PMEMORY_BLOCKS pMemBlocks
 ) {
+    bool init_mic_flag = 0;
+
     int i_begin, i_end, j_begin, j_end, k_begin, k_end, k_mic_begin, k_mic_end;
     int nMicXLength, nMicYLength, nMicZLength;
     int nMicMaxXLength, nMicMaxYLength, nMicMaxZLength;
@@ -615,8 +617,9 @@ void calc_shot (
             printf("%d %d\n", k_begin, k_end);
             printf ( "l %d started normal nMicMaxLength %d %d %d\n", l, nMicXLength, nMicYLength, nMicZLength );
 
-            if ( USE_MIC_MAX_LENGTH_THRESHOLD == nMicXLength ) {
+            if ( USE_MIC_MAX_LENGTH_THRESHOLD == nMicXLength && !init_mic_flag) {
 
+                init_mic_flag = 1;
                 double sum=0;
                 printf("ON CPU %d %d %d %lf\n", i_begin, j_begin, k_mic_begin, sum);
                 for(int i = i_begin; i<=i_end; i++) {
@@ -658,19 +661,6 @@ void calc_shot (
                     nocopy ( mic_exchange_part_w: length ( 5 * mic_slice_size ) MIC_ALLOC )\
                     signal ( mic_u )
 
-#pragma offload target(mic:0)\  
-                nocopy(mic_u :length(copy_length) MIC_REUSE)\
-                wait(mic_u) 
-                {
-                    double sum=0;
-                    for(int i = i_begin; i<=i_end; i++) {
-                        for(int j = j_begin; j<= j_end; j++) {
-                            for ( int k = 5; k<= 5+mic_z_length; k++  ) {
-                                printf("%d %d %d %lf\n",i, j, k, mic_u[POSITION_INDEX_X(k,j,i)]);
-                            }
-                        }
-                    }   
-                }
             } else {
 
                 copy_length = mic_slice_size * ( 5 );
@@ -755,6 +745,38 @@ void calc_shot (
         }
         // printf("[L]Finished %d\n",l);
     }//for(l=1;l<=lt;l++) end
+
+#pragma offload_transfer target(mic:0) \
+    nocopy(mic_exchange_part_u:length(5*mic_slice_size) MIC_FREE)\
+    nocopy(mic_exchange_part_v:length(5*mic_slice_size) MIC_FREE)\
+    nocopy(mic_exchange_part_w:length(5*mic_slice_size) MIC_FREE)\
+    nocopy(mic_u :length(copy_length) MIC_FREE)\
+    nocopy(mic_v  :length(copy_length) MIC_FREE)\
+    nocopy(mic_w  :length(copy_length) MIC_FREE)\
+    nocopy(mic_up2:length(copy_length) MIC_FREE)\
+    nocopy(mic_vp :length(copy_length) MIC_FREE)\
+    nocopy(mic_vp1:length(copy_length) MIC_FREE)\
+    nocopy(mic_vp2:length(copy_length) MIC_FREE)\
+    nocopy(mic_wp :length(copy_length) MIC_FREE)\
+    nocopy(mic_wp1:length(copy_length) MIC_FREE)\
+    nocopy(mic_wp2:length(copy_length) MIC_FREE)\
+    nocopy(mic_us :length(copy_length) MIC_FREE)\
+    nocopy(mic_us1:length(copy_length) MIC_FREE)\
+    nocopy(mic_us2:length(copy_length) MIC_FREE)\
+    nocopy(mic_vs :length(copy_length) MIC_FREE)\
+    nocopy(mic_vs1:length(copy_length) MIC_FREE)\
+    nocopy(mic_vs2:length(copy_length) MIC_FREE)\
+    nocopy(mic_ws :length(copy_length) MIC_FREE)\
+    nocopy(mic_ws1:length(copy_length) MIC_FREE)\
+    nocopy(mic_ws2:length(copy_length) MIC_FREE)
+    
+    copy_length = mic_slice_size * ( mic_z_length + 10 );
+    if ( 169 >= k_mic_begin ) {
+        // ON MIC
+#pragma offload target(mic:0) out(mic_up1 : length(copy_length) MIC_FREE) 
+        {}
+    }
+
 
     for ( int j = 5; j < nMicYLength + 5; j++ )
         for ( int i = 5; i < nMicXLength + 5; i++ ) {
