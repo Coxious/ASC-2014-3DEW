@@ -13,7 +13,7 @@
 
 #define DEBUG_NO_PARALLEL
 
-#define USE_MIC_MAX_LENGTH_THRESHOLD 	90
+#define USE_MIC_MAX_LENGTH_THRESHOLD 	70
 
 #define MIC_CPU_RATE	0.6
 
@@ -61,6 +61,39 @@ typedef struct _MEMORY_BLOCKS {
     double *u, *v, *w;
     double * to_write;
 } MEMORY_BLOCKS, *PMEMORY_BLOCKS;
+
+
+
+
+
+
+double * debug_u;
+double * debug_v;
+double * debug_w;
+double * debug_up;
+double * debug_up1;
+double * debug_up2;
+double * debug_vp;
+double * debug_vp1;
+double * debug_vp2;
+double * debug_wp;
+double * debug_wp1;
+double * debug_wp2;
+double * debug_us;
+double * debug_us1;
+double * debug_us2;
+double * debug_vs;
+double * debug_vs1;
+double * debug_vs2;
+double * debug_ws;
+double * debug_ws1;
+double * debug_ws2;
+
+
+
+
+
+
 
 MIC_VAR int ishot, ncy_shot, ncx_shot;
 
@@ -581,6 +614,26 @@ void calc_shot (
         j_begin = 5 + n_mic_front - nfront;
         j_end	= n_mic_front - nfront + nMicYLength + 5;
 
+///////////////Debug
+        calc_single_l ( i_begin, i_end, j_begin, j_end, 5 + n_mic_top - ntop, n_mic_top - ntop + nMicZLength + 5,
+                    debug_up  , debug_up1 , debug_up2 , debug_vp  , debug_vp1 ,
+                    debug_vp2 , debug_wp  , debug_wp1 , debug_wp2 , debug_us  ,
+                    debug_us1 , debug_us2 , debug_vs  , debug_vs1 , debug_vs2 ,
+                    debug_ws  , debug_ws1 , debug_ws2 , debug_u   , debug_v   , debug_w,
+                    nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront, ncz_shot_shaddow, l );
+
+            double *swap_temp;
+            swap_temp = debug_up2; debug_up2 = debug_up1; debug_up1 = debug_up; debug_up = swap_temp;
+            swap_temp = debug_vp2; debug_vp2 = debug_vp1; debug_vp1 = debug_vp; debug_vp = swap_temp;
+            swap_temp = debug_wp2; debug_wp2 = debug_wp1; debug_wp1 = debug_wp; debug_wp = swap_temp;
+            swap_temp = debug_us2; debug_us2 = debug_us1; debug_us1 = debug_us; debug_us = swap_temp;
+            swap_temp = debug_vs2; debug_vs2 = debug_vs1; debug_vs1 = debug_vs; debug_vs = swap_temp;
+            swap_temp = debug_ws2; debug_ws2 = debug_ws1; debug_ws1 = debug_ws; debug_ws = swap_temp;
+
+///////////////
+
+
+
         if ( nMicXLength < USE_MIC_MAX_LENGTH_THRESHOLD ) {
 
             k_begin	= 5 + n_mic_top - ntop;
@@ -766,9 +819,25 @@ void calc_shot (
 
             // #pragma offload_wait target(mic:0) wait(mic_exchange_part_w)
 
-            memcpy ( &(u[POSITION_INDEX_X(0,0,k_mic_begin-1)]), mic_exchange_part_u, sizeof ( double )* 5 * mic_slice_size );
-            memcpy ( &(v[POSITION_INDEX_X(0,0,k_mic_begin-1)]), mic_exchange_part_v, sizeof ( double )* 5 * mic_slice_size );
-            memcpy ( &(w[POSITION_INDEX_X(0,0,k_mic_begin-1)]), mic_exchange_part_w, sizeof ( double )* 5 * mic_slice_size );
+            memcpy ( &(u[POSITION_INDEX_X(0,0,k_mic_begin+1)]), mic_exchange_part_u, sizeof ( double )* 5 * mic_slice_size );
+            memcpy ( &(v[POSITION_INDEX_X(0,0,k_mic_begin+1)]), mic_exchange_part_v, sizeof ( double )* 5 * mic_slice_size );
+            memcpy ( &(w[POSITION_INDEX_X(0,0,k_mic_begin+1)]), mic_exchange_part_w, sizeof ( double )* 5 * mic_slice_size );
+
+            printf("Start examming.....k_mic_begin:%d\n",k_mic_begin);
+            for(int k =  k_begin;k<k_end;++k)
+                for(int j = j_begin;j<j_end;++j)
+                    for(int i = i_begin;i<i_end;++i)
+                    {
+                        double u_diff = u[POSITION_INDEX_X(k,j,i)] - debug_u[POSITION_INDEX_X(k,j,i)];
+                        double v_diff = v[POSITION_INDEX_X(k,j,i)] - debug_v[POSITION_INDEX_X(k,j,i)];
+                        double w_diff = w[POSITION_INDEX_X(k,j,i)] - debug_w[POSITION_INDEX_X(k,j,i)];
+                        if(abs(u_diff)+abs(u_diff)+abs(u_diff) > 1e-6){
+                            printf("[-]i:%d j:%d k:%d:u:%lf v:%lf w:%lf | u:%lf v:%lf w:%lf | %lf %lf %lf\n",i,j,k,
+                                u[POSITION_INDEX_X(k,j,i)],v[POSITION_INDEX_X(k,j,i)],w[POSITION_INDEX_X(k,j,i)],
+                                debug_u[POSITION_INDEX_X(k,j,i)],debug_v[POSITION_INDEX_X(k,j,i)],debug_w[POSITION_INDEX_X(k,j,i)],
+                                u_diff,v_diff,w_diff);
+                        }
+                    }
         }
         // printf("[L]Finished %d\n",l);
     }//for(l=1;l<=lt;l++) end
@@ -803,6 +872,7 @@ void calc_shot (
         // #pragma offload target(mic:0) out(mic_up1 : length(copy_length) MIC_FREE) signal(mic_up1)
         //         {}
         // #pragma offload_wait target(mic:0) wait(mic_up1)
+        memcpy(&up1[POSITION_INDEX_X ( 0,0 , k_mic_begin - 5 )],mic_up1,copy_length * sizeof( double ));
     }
 
 
@@ -876,6 +946,50 @@ int main ( int argc, char **argv ) {
     memory_blocks.ws  = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
     memory_blocks.ws1 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
     memory_blocks.ws2 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+
+    debug_u   = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+    debug_v   = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+    debug_w   = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+    debug_up  = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+    debug_up1 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+    debug_up2 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+    debug_vp  = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+    debug_vp1 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+    debug_vp2 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+    debug_wp  = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+    debug_wp1 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+    debug_wp2 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+    debug_us  = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+    debug_us1 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+    debug_us2 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+    debug_vs  = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+    debug_vs1 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+    debug_vs2 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+    debug_ws  = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+    debug_ws1 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+    debug_ws2 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
+
+    memset ( debug_u  , 0, sizeof ( double ) *mic_used_size );
+    memset ( debug_v  , 0, sizeof ( double ) *mic_used_size );
+    memset ( debug_w  , 0, sizeof ( double ) *mic_used_size );
+    memset ( debug_up , 0, sizeof ( double ) *mic_used_size );
+    memset ( debug_up1, 0, sizeof ( double ) *mic_used_size );
+    memset ( debug_up2, 0, sizeof ( double ) *mic_used_size );
+    memset ( debug_vp , 0, sizeof ( double ) *mic_used_size );
+    memset ( debug_vp1, 0, sizeof ( double ) *mic_used_size );
+    memset ( debug_vp2, 0, sizeof ( double ) *mic_used_size );
+    memset ( debug_wp , 0, sizeof ( double ) *mic_used_size );
+    memset ( debug_wp1, 0, sizeof ( double ) *mic_used_size );
+    memset ( debug_wp2, 0, sizeof ( double ) *mic_used_size );
+    memset ( debug_us , 0, sizeof ( double ) *mic_used_size );
+    memset ( debug_us1, 0, sizeof ( double ) *mic_used_size );
+    memset ( debug_us2, 0, sizeof ( double ) *mic_used_size );
+    memset ( debug_vs , 0, sizeof ( double ) *mic_used_size );
+    memset ( debug_vs1, 0, sizeof ( double ) *mic_used_size );
+    memset ( debug_vs2, 0, sizeof ( double ) *mic_used_size );
+    memset ( debug_ws , 0, sizeof ( double ) *mic_used_size );
+    memset ( debug_ws1, 0, sizeof ( double ) *mic_used_size );
+    memset ( debug_ws2, 0, sizeof ( double ) *mic_used_size );
 
     memory_blocks.to_write = ( double* ) calloc ( nSliceSize, sizeof ( double ) );
 
