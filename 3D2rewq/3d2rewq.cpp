@@ -614,11 +614,13 @@ void calc_shot (
             k_end = k_mic_begin - 1;
             k_mic_end = n_mic_top - ntop + +5;
             printf("%d %d\n", k_begin, k_end);
-            printf ( "l %d started normal nMicMaxLength %d %d %d\n", l, nMicXLength, nMicYLength, nMicZLength );
+            printf ( "l %d started mic nMicMaxLength %d %d %d\n", l, nMicXLength, nMicYLength, nMicZLength );
 
-            if ( USE_MIC_MAX_LENGTH_THRESHOLD == nMicXLength && !init_mic_flag) {
+//           	__SHOW__(copy_length)
 
-                // init_mic_flag = 1;
+            if (!init_mic_flag) {
+
+                init_mic_flag = 1;
                 // double sum=0;
                 // printf("ON CPU %d %d %d %lf\n", i_begin, j_begin, k_mic_begin, sum);
                 // for(int i = i_begin; i<=i_end; i++) {
@@ -629,8 +631,9 @@ void calc_shot (
                 //     }
                 // }
                 // printf("ON CPU %lf\n", sum);
-                // copy_length = mic_slice_size * ( mic_z_length + 10 );
-                // printf("length: %d\n", copy_length);
+
+                copy_length = mic_slice_size * ( mic_z_length + 10 );
+                printf("length: %d\n", copy_length);
 
 #pragma offload_transfer target(mic:0)\
 					in(mic_u  :length(copy_length) MIC_ALLOC)\
