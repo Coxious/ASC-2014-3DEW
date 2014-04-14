@@ -692,8 +692,8 @@ void calc_shot (
 				// }
 				// printf("ON CPU %lf\n", sum);
 
-				copy_length = mic_slice_size * ( mic_z_length + 1 );
-				printf("First time initailize copy_length %d\n", copy_length);
+				copy_length = mic_slice_size * ( mic_z_length);
+				printf("First time initailize mic_slice_size* copy_length %d max access %d\n",mic_slice_size* copy_length,POSITION_INDEX_X(5 + k_mic_end - cpu_z_length-1,j_end-1,i_end-1));
 
 #pragma offload_transfer target(mic:0)\
 					in(mic_u  :length(copy_length) MIC_ALLOC)\
