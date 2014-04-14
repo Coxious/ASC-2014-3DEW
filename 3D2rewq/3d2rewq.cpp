@@ -13,7 +13,7 @@
 
 #define DEBUG_NO_PARALLEL
 
-#define USE_MIC_MAX_LENGTH_THRESHOLD 	91
+#define USE_MIC_MAX_LENGTH_THRESHOLD 	90
 
 #define MIC_CPU_RATE	0.6
 
@@ -90,13 +90,6 @@ MIC_VAR int ishot, ncy_shot, ncx_shot;
 MIC_VAR double *wave;
 MIC_VAR double nshot, t0, tt, c0;
 MIC_VAR double dtx, dtz;
-
-MIC_VAR	double vvp2_dtx_dtx;
-MIC_VAR	double vvs2_dtz_dtz;
-MIC_VAR	double vvs2_dtx_dtx;
-MIC_VAR	double vvp2_dtz_dtz;
-MIC_VAR	double vvp2_dtz_dtx;
-MIC_VAR	double vvs2_dtz_dtx;
 
 int nx, ny, nz, lt, nedge;
 double frequency;
@@ -252,6 +245,12 @@ MIC_VAR void calc_single_l (
 	double _tempuxz, _tempuxy, _tempvyz, _tempvxy, _tempwxz, _tempwyz;
 	double px;
 	double current_c;
+	double vvp2_dtx_dtx;
+	double vvs2_dtz_dtz;
+	double vvs2_dtx_dtx;
+	double vvp2_dtz_dtz;
+	double vvp2_dtz_dtx;
+	double vvs2_dtz_dtx;
 
 #ifndef DEBUG_NO_PARALLEL
 	#pragma omp parallel for private(i,j,k)
@@ -268,13 +267,26 @@ MIC_VAR void calc_single_l (
 		vvp2_dtz_dtx = vvp2 * dtz * dtx;
 		vvs2_dtz_dtx = vvs2 * dtz * dtx;
 
+#ifdef __MIC__
+/*
+MIC_VAR int ishot, ncy_shot, ncx_shot;
 
+MIC_VAR double *wave;
+MIC_VAR double nshot, t0, c0;
+MIC_VAR double dtx, dtz;
+*/
+//		 for(int qq=0;qq<100;qq++){printf("%lf %lf %lf %lf\n",c[1][1],c0, dtx, dtz);}
+#endif
 		for ( int j = j_begin; j < j_end; j++ ) {
 			for ( int i = i_begin; i < i_end; i++ ) {
 
 				// printf("i:%d j:%d k:%d\n",i-5+nleft,j-5+nfront,k-5+ntop);
 				int nIndex = POSITION_INDEX_X ( k, j, i );
 
+
+// #ifdef __MIC__
+// 				for(qq=0;qq<1000;qq++){printf("%lf\n",c[0][0]);}
+// #endif
 				if ( i - 5 + nleft == ncx_shot - 1 && j - 5 + nfront == ncy_shot - 1 && k - 5 + ntop == ncz_shot_new - 1 ) {
 					px = 1.;
 				} else {
@@ -706,6 +718,13 @@ void calc_shot (
 					in(mic_ws1:length(copy_length) MIC_ALLOC)\
 					in(mic_ws2:length(copy_length) MIC_ALLOC)\
 					in(wave   :length(lt) MIC_ALLOC) \
+					in(c: MIC_ALLOC)\
+ 					in(ncy_shot:MIC_ALLOC)\
+ 					in(ncx_shot:MIC_ALLOC)\
+ 					in(t0:MIC_ALLOC)\
+ 					in(c0:MIC_ALLOC)\
+ 					in(dtx:MIC_ALLOC)\
+ 					in(dtz:MIC_ALLOC)\
 					nocopy ( mic_exchange_part_u: length ( 5 * mic_slice_size ) MIC_ALLOC )\
 					nocopy ( mic_exchange_part_v: length ( 5 * mic_slice_size ) MIC_ALLOC )\
 					nocopy ( mic_exchange_part_w: length ( 5 * mic_slice_size ) MIC_ALLOC )\
