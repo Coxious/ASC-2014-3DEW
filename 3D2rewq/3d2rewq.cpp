@@ -52,8 +52,8 @@
 #define ROUND_TO_SIZE_LESS(_length,_alignment)  \
     ((_length) &~ ((_alignment)-1))
 
-#define vpp2(_z) (((_z+ntop-5)<210)?(5290000):((_z+ntop-5)>=260?12250000:7840000))
-#define vss2(_z) (((_z+ntop-5)<210)?(1517824):((_z+ntop-5)>=260?3644281:2277081))
+#define vpp2(_z) ((((_z)+ntop-5)<210)?(5290000):(((_z)+ntop-5)>=260?12250000:7840000))
+#define vss2(_z) ((((_z)+ntop-5)<210)?(1517824):(((_z)+ntop-5)>=260?3644281:2277081))
 
 double * debug_u;
 double * debug_v;
@@ -275,7 +275,7 @@ MIC_VAR void calc_single_l (
            MIC_VAR double nshot, t0, c0;
            MIC_VAR double dtx, dtz;
            */
-        for(int qq=0;qq<100;qq++){printf("%d %d %d %d\n",i_begin, i_end, k_begin, k_end);}
+        // for(int qq=0;qq<100;qq++){printf("%d %d %d %d\n",i_begin, i_end, k_begin, k_end);}
 #endif
         for ( int j = j_begin; j < j_end; j++ ) {
             for ( int i = i_begin; i < i_end; i++ ) {
@@ -608,7 +608,7 @@ void calc_shot (
         ///////////////Debug
         if(nMicXLength >= USE_MIC_MAX_LENGTH_THRESHOLD) {
             FILE *test1 = fopen("cpu_output.txt", "w");
-            for(int i = i_begin; i < i_end; i++) 
+            for(int i = i_begin; i < i_end; i++)
                 for(int j = j_begin; j<j_end; j++)
                     for(int k = k_mic_begin; k<n_mic_top - ntop +nMicZLength +5; k++)
                         fprintf(test1, "%d %d %d %lf %lf %lf\n", i, j, k, debug_u[POSITION_INDEX_X(k, j, i)], debug_u[POSITION_INDEX_X(k, j, i)], debug_u[POSITION_INDEX_X(k, j, i)]);
@@ -619,14 +619,14 @@ void calc_shot (
                 debug_us1 , debug_us2 , debug_vs  , debug_vs1 , debug_vs2 ,
                 debug_ws  , debug_ws1 , debug_ws2 , debug_u   , debug_v   , debug_w,
                 nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront, ncz_shot_shaddow, l );
-
+/*
         if(nMicXLength >= USE_MIC_MAX_LENGTH_THRESHOLD) {
-            for(int i = i_begin; i < i_end; i++) 
+            for(int i = i_begin; i < i_end; i++)
                 for(int j = j_begin; j<j_end; j++)
                     for(int k = k_mic_begin; k<n_mic_top - ntop +nMicZLength +5; k++)
                         fprintf(test1, "%d %d %d %lf %lf %lf\n", i, j, k, debug_u[POSITION_INDEX_X(k, j, i)], debug_u[POSITION_INDEX_X(k, j, i)], debug_u[POSITION_INDEX_X(k, j, i)]);
             fclose(test1);
-        }
+        }*/
 
         double *swap_temp;
         swap_temp = debug_up2; debug_up2 = debug_up1; debug_up1 = debug_up; debug_up = swap_temp;
@@ -690,7 +690,7 @@ void calc_shot (
                 // printf("ON CPU %lf\n", sum);
 
                 copy_length = mic_slice_size * ( mic_z_length+10 );
-                printf("First time initailize mic_slice_size* copy_length %d max access %d\n",copy_length,POSITION_INDEX_X(5 + k_mic_end - cpu_z_length-1,j_end-1,i_end-1));
+                printf("First time initailize mic_slice_size* copy_length %d max access %d\n",copy_length,POSITION_INDEX_X( k_mic_end - cpu_z_length-1,j_end-1,i_end-1));
 
 #pragma offload_transfer target(mic:0)\
                 in(mic_u  :length(copy_length) MIC_ALLOC)\
@@ -769,24 +769,24 @@ void calc_shot (
             signal(mic_exchange_part_w)
             {
                 printf("%d %d %d\n", mic_exchange_part_u, mic_exchange_part_v, mic_exchange_part_w);
-
-                for(int i = i_begin; i < i_end; i++) 
+/*
+                for(int i = i_begin; i < i_end; i++)
                     for(int j = j_begin; j<j_end; j++)
                         for(int k = k_mic_begin; k<n_mic_top - ntop +nMicZLength +5; k++)
                             printf("%d %d %d %lf %lf %lf\n", i, j, k, debug_u[POSITION_INDEX_X(k, j, i)], debug_u[POSITION_INDEX_X(k, j, i)], debug_u[POSITION_INDEX_X(k, j, i)]);
-
-                calc_single_l ( i_begin, i_end, j_begin, j_end, 5, 5 + k_mic_end - cpu_z_length,
+*/
+                calc_single_l ( i_begin, i_end, j_begin, j_end, 5, k_mic_end - cpu_z_length,
                         mic_up  , mic_up1 , mic_up2 , mic_vp  , mic_vp1 ,
                         mic_vp2 , mic_wp  , mic_wp1 , mic_wp2 , mic_us  ,
                         mic_us1 , mic_us2 , mic_vs  , mic_vs1 , mic_vs2 ,
                         mic_ws  , mic_ws1 , mic_ws2 , mic_u   , mic_v   , mic_w,
-                        nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront, ncz_shot_shaddow - cpu_z_length, l );
-
-                for(int i = i_begin; i < i_end; i++) 
+                        nMicMaxXLength, nMicMaxYLength, ntop + cpu_z_length, nleft, nfront, ncz_shot_shaddow , l );
+/*
+                for(int i = i_begin; i < i_end; i++)
                     for(int j = j_begin; j<j_end; j++)
                         for(int k = k_mic_begin; k<n_mic_top - ntop +nMicZLength +5; k++)
                             printf("%d %d %d %lf %lf %lf\n", i, j, k, debug_u[POSITION_INDEX_X(k, j, i)], debug_u[POSITION_INDEX_X(k, j, i)], debug_u[POSITION_INDEX_X(k, j, i)]);
-
+*/
                 memcpy ( mic_exchange_part_u, &(mic_u[POSITION_INDEX_X(5,0,0)]), sizeof ( double ) * 5 * mic_slice_size_shaddow );
                 memcpy ( mic_exchange_part_v, &(mic_v[POSITION_INDEX_X(5,0,0)]), sizeof ( double ) * 5 * mic_slice_size_shaddow );
                 memcpy ( mic_exchange_part_w, &(mic_w[POSITION_INDEX_X(5,0,0)]), sizeof ( double ) * 5 * mic_slice_size_shaddow );
@@ -821,24 +821,24 @@ void calc_shot (
             memcpy ( &(u[POSITION_INDEX_X(k_mic_begin,0,0)]), mic_exchange_part_u, sizeof ( double )* 5 * mic_slice_size );
             memcpy ( &(v[POSITION_INDEX_X(k_mic_begin,0,0)]), mic_exchange_part_v, sizeof ( double )* 5 * mic_slice_size );
             memcpy ( &(w[POSITION_INDEX_X(k_mic_begin,0,0)]), mic_exchange_part_w, sizeof ( double )* 5 * mic_slice_size );
+/*
+            printf("Start examming.....k_mic_begin:%d\n",k_mic_begin);
+            for(int k =  0; k<5;++k)
+            	for(int j = j_begin;j<j_end;++j)
+            		for(int i = i_begin;i<i_end;++i)
+            		{
+            			double u_diff = mic_exchange_part_u[POSITION_INDEX_X(k,j,i)] - debug_u[POSITION_INDEX_X(k_mic_begin+k,j,i)];
+            			double v_diff = mic_exchange_part_v[POSITION_INDEX_X(k,j,i)] - debug_v[POSITION_INDEX_X(k_mic_begin+k,j,i)];
+            			double w_diff = mic_exchange_part_w[POSITION_INDEX_X(k,j,i)] - debug_w[POSITION_INDEX_X(k_mic_begin+k,j,i)];
+            			if(abs(u_diff)+abs(u_diff)+abs(u_diff) > 1e-6){
+            				printf("[-]i:%d j:%d k:%d:u:%lf v:%lf w:%lf | u:%lf v:%lf w:%lf | %lf %lf %lf\n",i,j,k,
+            					mic_exchange_part_u[POSITION_INDEX_X(k,j,i)],mic_exchange_part_v[POSITION_INDEX_X(k,j,i)],mic_exchange_part_w[POSITION_INDEX_X(k,j,i)],
+            					debug_u[POSITION_INDEX_X(k_mic_begin+k,j,i)],debug_v[POSITION_INDEX_X(k_mic_begin+k,j,i)],debug_w[POSITION_INDEX_X(k_mic_begin+k,j,i)],
+            					u_diff,v_diff,w_diff);
+            				break;
+            			}
 
-            // printf("Start examming.....k_mic_begin:%d\n",k_mic_begin);
-            // for(int k =  0; k<5;++k)
-            // 	for(int j = j_begin;j<j_end;++j)
-            // 		for(int i = i_begin;i<i_end;++i)
-            // 		{
-            // 			double u_diff = mic_exchange_part_u[POSITION_INDEX_X(k,j,i)] - debug_u[POSITION_INDEX_X(k_mic_begin+k,j,i)];
-            // 			double v_diff = mic_exchange_part_v[POSITION_INDEX_X(k,j,i)] - debug_v[POSITION_INDEX_X(k_mic_begin+k,j,i)];
-            // 			double w_diff = mic_exchange_part_w[POSITION_INDEX_X(k,j,i)] - debug_w[POSITION_INDEX_X(k_mic_begin+k,j,i)];
-            // 			if(abs(u_diff)+abs(u_diff)+abs(u_diff) > 1e-6){
-            // 				printf("[-]i:%d j:%d k:%d:u:%lf v:%lf w:%lf | u:%lf v:%lf w:%lf | %lf %lf %lf\n",i,j,k,
-            // 					mic_exchange_part_u[POSITION_INDEX_X(k,j,i)],mic_exchange_part_v[POSITION_INDEX_X(k,j,i)],mic_exchange_part_w[POSITION_INDEX_X(k,j,i)],
-            // 					debug_u[POSITION_INDEX_X(k_mic_begin+k,j,i)],debug_v[POSITION_INDEX_X(k_mic_begin+k,j,i)],debug_w[POSITION_INDEX_X(k_mic_begin+k,j,i)],
-            // 					u_diff,v_diff,w_diff);
-            // 				break;
-            // 			}
-
-            // 		}
+            		}*/
         }
         // printf("[L]Finished %d\n",l);
     }//for(l=1;l<=lt;l++) end
