@@ -13,7 +13,7 @@
 
 #define DEBUG_NO_PARALLEL
 
-#define USE_MIC_MAX_LENGTH_THRESHOLD 	90
+#define USE_MIC_MAX_LENGTH_THRESHOLD 	91
 
 #define MIC_CPU_RATE	0.6
 
@@ -680,7 +680,7 @@ void calc_shot (
 				// }
 				// printf("ON CPU %lf\n", sum);
 
-				copy_length = mic_slice_size * ( mic_z_length + 10 );
+				copy_length = mic_slice_size * ( mic_z_length + 1 );
 				printf("First time initailize copy_length %d\n", copy_length);
 
 #pragma offload_transfer target(mic:0)\
@@ -722,8 +722,6 @@ void calc_shot (
 					signal(mic_u)
 			}
 
-printf("[!]k_mic_end %d k_mic_begin %d mic_z_length %d cpu_z_length %d\n",k_mic_end,k_mic_begin,mic_z_length,cpu_z_length);
-
 #pragma offload target(mic:0) \
 					out(mic_exchange_part_u:length(5*mic_slice_size) MIC_REUSE)\
 					out(mic_exchange_part_v:length(5*mic_slice_size) MIC_REUSE)\
@@ -755,7 +753,7 @@ printf("[!]k_mic_end %d k_mic_begin %d mic_z_length %d cpu_z_length %d\n",k_mic_
 				printf("%d %d %d\n", mic_exchange_part_u, mic_exchange_part_v, mic_exchange_part_w);
 
 				for(int jjj = 1; jjj<=1; jjj++) printf("%x %x %x\n", mic_u, mic_v, mic_w);
-				calc_single_l ( i_begin, i_end, j_begin, j_end, 5, 5 + mic_z_length,
+				calc_single_l ( i_begin, i_end, j_begin, j_end, 5, 5 + k_mic_end - cpu_z_length,
 								mic_up  , mic_up1 , mic_up2 , mic_vp  , mic_vp1 ,
 								mic_vp2 , mic_wp  , mic_wp1 , mic_wp2 , mic_us  ,
 								mic_us1 , mic_us2 , mic_vs  , mic_vs1 , mic_vs2 ,
@@ -767,13 +765,13 @@ printf("[!]k_mic_end %d k_mic_begin %d mic_z_length %d cpu_z_length %d\n",k_mic_
 				memcpy ( mic_exchange_part_w, &(mic_w[POSITION_INDEX_X(5,0,0)]), sizeof ( double ) * 5 * mic_slice_size_shaddow );
 
 
-				double *swap_temp;
-				swap_temp = mic_up2; mic_up2 = mic_up1; mic_up1 = mic_up; mic_up = swap_temp;
-				swap_temp = mic_vp2; mic_vp2 = mic_vp1; mic_vp1 = mic_vp; mic_vp = swap_temp;
-				swap_temp = mic_wp2; mic_wp2 = mic_wp1; mic_wp1 = mic_wp; mic_wp = swap_temp;
-				swap_temp = mic_us2; mic_us2 = mic_us1; mic_us1 = mic_us; mic_us = swap_temp;
-				swap_temp = mic_vs2; mic_vs2 = mic_vs1; mic_vs1 = mic_vs; mic_vs = swap_temp;
-				swap_temp = mic_ws2; mic_ws2 = mic_ws1; mic_ws1 = mic_ws; mic_ws = swap_temp;
+				double *swap_temp_mic;
+				swap_temp_mic = mic_up2; mic_up2 = mic_up1; mic_up1 = mic_up; mic_up = swap_temp_mic;
+				swap_temp_mic = mic_vp2; mic_vp2 = mic_vp1; mic_vp1 = mic_vp; mic_vp = swap_temp_mic;
+				swap_temp_mic = mic_wp2; mic_wp2 = mic_wp1; mic_wp1 = mic_wp; mic_wp = swap_temp_mic;
+				swap_temp_mic = mic_us2; mic_us2 = mic_us1; mic_us1 = mic_us; mic_us = swap_temp_mic;
+				swap_temp_mic = mic_vs2; mic_vs2 = mic_vs1; mic_vs1 = mic_vs; mic_vs = swap_temp_mic;
+				swap_temp_mic = mic_ws2; mic_ws2 = mic_ws1; mic_ws1 = mic_ws; mic_ws = swap_temp_mic;
 			}
 
 			calc_single_l ( i_begin, i_end, j_begin, j_end, k_begin, k_end,
@@ -820,7 +818,7 @@ printf("[!]k_mic_end %d k_mic_begin %d mic_z_length %d cpu_z_length %d\n",k_mic_
 
 	if( init_mic_flag == true)
 	{
-
+		printf("Getting things back...");
 		#pragma offload_transfer target(mic:0) \
 			nocopy(mic_exchange_part_u:length(5*mic_slice_size) MIC_FREE)\
 			nocopy(mic_exchange_part_v:length(5*mic_slice_size) MIC_FREE)\
@@ -846,8 +844,7 @@ printf("[!]k_mic_end %d k_mic_begin %d mic_z_length %d cpu_z_length %d\n",k_mic_
 			nocopy(mic_ws2:length(copy_length) MIC_FREE)
 
 		copy_length = mic_slice_size * ( mic_z_length + 10 );
-		printf("init_mic_flag : %d",init_mic_flag);
-		if ( 169 >= k_mic_begin) {
+		if ( 169-ntop >= k_mic_begin) {
 			// ON MIC
 			#pragma offload target(mic:0) out(mic_up1 : length(copy_length) MIC_FREE) signal(mic_up1)
 						{}
