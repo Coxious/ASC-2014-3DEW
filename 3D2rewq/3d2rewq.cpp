@@ -85,10 +85,13 @@ typedef struct _MEMORY_BLOCKS {
     double * to_write;
 } MEMORY_BLOCKS, *PMEMORY_BLOCKS;
 
-MIC_VAR int ishot, ncy_shot, ncx_shot;
+MIC_VAR int ncy_shot, ncx_shot;
+
+int nshot,ishot;
+double t0, tt;
 
 MIC_VAR double *wave;
-MIC_VAR double nshot, t0, tt, c0;
+MIC_VAR double  c0;
 MIC_VAR double dtx, dtz;
 
 int nx, ny, nz, lt, nedge;
@@ -238,8 +241,9 @@ MIC_VAR
         double * vp2 , double * wp  , double * wp1 , double * wp2 , double * us  ,
         double * us1 , double * us2 , double * vs  , double * vs1 , double * vs2 ,
         double * ws  , double * ws1 , double * ws2 , double * u   , double * v   , double * w,
-        int nMicMaxXLength, int nMicMaxYLength, int ntop, int nleft, int nfront, int ncz_shot_new, int l
-        ) {
+        int nMicMaxXLength, int nMicMaxYLength, int ntop, int nleft, int nfront, int ncz_shot_new, int l,
+		int ncy_shot,int ncx_shot,double c0 ,double dtx,double dtz
+		) {
     double vvp2, vvs2, tempux2, tempuy2, tempuz2, tempvx2, tempvy2, tempvz2,
     tempwx2, tempwy2, tempwz2, tempuxz, tempuxy, tempvyz, tempvxy, tempwxz, tempwyz;
 
@@ -276,7 +280,14 @@ MIC_VAR
            MIC_VAR double nshot, t0, c0;
            MIC_VAR double dtx, dtz;
            */
-        	// for(int qq=0;qq<100;qq++){printf("%d %d %d %d\n",P SITION_INDEX_X ( 1, 0, 0 ), i_end, k_begin, k_end);}
+        	for(int qq=0;qq<20;qq++){printf("%d %d %d %d %d %d\n%p %p %p %p %p \n%p %p %p %p %p \n%p %p %p %p %p \n%p %p %p %p %p %p \n%d %d %d %d %d %d %d\nncx_shot %d ncy_shot %d c0 %lf dtz %lf dtx %lf c[1][1] %lf wave[l - 1]%lf\n",
+         i_begin,  i_end,  j_begin,  j_end,  k_begin,  k_end,
+         up  ,  up1 ,  up2 ,  vp  ,  vp1 ,
+         vp2 ,  wp  ,  wp1 ,  wp2 ,  us  ,
+         us1 ,  us2 ,  vs  ,  vs1 ,  vs2 ,
+         ws  ,  ws1 ,  ws2 ,  u   ,  v   ,  w,
+         nMicMaxXLength,  nMicMaxYLength,  ntop,  nleft,  nfront,  ncz_shot_new,l,
+         ncx_shot,ncy_shot,c0,dtz,dtx,c[0][1],wave[l - 1]);}
 #endif
         for ( int j = j_begin; j < j_end; j++ ) {
             for ( int i = i_begin; i < i_end; i++ ) {
@@ -285,9 +296,9 @@ MIC_VAR
                 int nIndex = POSITION_INDEX_X ( k, j, i );
 
 
-                // #ifdef __MIC__
-                // 				for(qq=0;qq<1000;qq++){printf("%lf\n",c[0][0]);}
-                // #endif
+                #ifdef __MIC__
+//                				for(int qq=0;qq<1000;qq++){printf("%p\n",u);}
+                #endif
                 if ( i - 5 + nleft == ncx_shot - 1 && j - 5 + nfront == ncy_shot - 1 && k - 5 + ntop == ncz_shot_new - 1 ) {
                     px = 1.;
                 } else {
@@ -493,6 +504,12 @@ void calc_shot (
     int ntop = ncz_shot - xmax / unit - 10;
     int nbottom = ncz_shot + xmax / unit + 10;
 
+    int ncy_shot_shadow	= ncy_shot;
+    int ncx_shot_shadow = ncx_shot;
+    int c0_shadow 		= c0;
+    int dtx_shadow		= dtx;
+    int dtz_shadow		= dtz;
+
     ntop = ntop - 1;
     nfront = nfront - 1;
     nleft = nleft - 1;
@@ -507,7 +524,6 @@ void calc_shot (
     nMicMaxXLength = nright  - nleft;
     nMicMaxYLength = nback   - nfront;
     nMicMaxZLength = nbottom - ntop;
-
 
     // printf("MAX_X: %d, MAX_Y: %d, MAX_Z: %d", nMicMaxXLength, nMicMaxYLength, nMicMaxZLength);
 
@@ -622,7 +638,9 @@ void calc_shot (
                 debug_vp2 , debug_wp  , debug_wp1 , debug_wp2 , debug_us  ,
                 debug_us1 , debug_us2 , debug_vs  , debug_vs1 , debug_vs2 ,
                 debug_ws  , debug_ws1 , debug_ws2 , debug_u   , debug_v   , debug_w,
-                nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront, ncz_shot_shaddow, l );
+                nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront, ncz_shot_shaddow, l ,
+                ncy_shot,ncx_shot, c0 , dtx, dtz
+                );
 /*
         if(nMicXLength >= USE_MIC_MAX_LENGTH_THRESHOLD) {
             for(int i = i_begin; i < i_end; i++)
@@ -659,7 +677,9 @@ void calc_shot (
                     vp2 , wp  , wp1 , wp2 , us  ,
                     us1 , us2 , vs  , vs1 , vs2 ,
                     ws  , ws1 , ws2 , u   , v   , w,
-                    nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront, ncz_shot_shaddow, l );
+                    nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront, ncz_shot_shaddow, l ,
+					ncy_shot,ncx_shot, c0 , dtx, dtz
+                    );
 
             double *swap_temp;
             swap_temp = up2; up2 = up1; up1 = up; up = swap_temp;
@@ -720,12 +740,6 @@ void calc_shot (
                 in(mic_ws2:length(copy_length) MIC_ALLOC)\
                 in(wave   :length(lt) MIC_ALLOC) \
                 in(c: MIC_ALLOC)\
-                in(ncy_shot:MIC_ALLOC)\
-                in(ncx_shot:MIC_ALLOC)\
-                in(t0:MIC_ALLOC)\
-                in(c0:MIC_ALLOC)\
-                in(dtx:MIC_ALLOC)\
-                in(dtz:MIC_ALLOC)\
                 nocopy ( mic_exchange_part_u: length ( 5 * mic_slice_size ) MIC_ALLOC )\
                 nocopy ( mic_exchange_part_v: length ( 5 * mic_slice_size ) MIC_ALLOC )\
                 nocopy ( mic_exchange_part_w: length ( 5 * mic_slice_size ) MIC_ALLOC )\
@@ -769,17 +783,20 @@ void calc_shot (
             nocopy(mic_ws : MIC_REUSE)\
             nocopy(mic_ws1: MIC_REUSE)\
             nocopy(mic_ws2: MIC_REUSE)\
-            wait(mic_u)\
+			wait(mic_u)\
             signal(mic_exchange_part_w)
             {
-                printf("%d %d %d\n", mic_exchange_part_u, mic_exchange_part_v, mic_exchange_part_w);
+//               printf("%d %d %d\n", mic_exchange_part_u, mic_exchange_part_v, mic_exchange_part_w);
 
                 calc_single_l ( i_begin, i_end, j_begin, j_end, 5, k_mic_end - cpu_z_length,
                         mic_up  , mic_up1 , mic_up2 , mic_vp  , mic_vp1 ,
                         mic_vp2 , mic_wp  , mic_wp1 , mic_wp2 , mic_us  ,
                         mic_us1 , mic_us2 , mic_vs  , mic_vs1 , mic_vs2 ,
                         mic_ws  , mic_ws1 , mic_ws2 , mic_u   , mic_v   , mic_w,
-                        nMicMaxXLength, nMicMaxYLength, ntop + cpu_z_length, nleft, nfront, ncz_shot_shaddow , l );
+                        nMicMaxXLength, nMicMaxYLength, ntop + cpu_z_length, nleft, nfront, ncz_shot_shaddow , l,
+						ncy_shot,ncx_shot, c0 , dtx, dtz
+//                        ncy_shot_shadow,ncx_shot_shadow, c0_shadow , dtx_shadow, dtz_shadow
+                );
 
                 memcpy ( mic_exchange_part_u, &(mic_u[POSITION_INDEX_X(5,0,0)]), sizeof ( double ) * 5 * mic_slice_size_shaddow );
                 memcpy ( mic_exchange_part_v, &(mic_v[POSITION_INDEX_X(5,0,0)]), sizeof ( double ) * 5 * mic_slice_size_shaddow );
@@ -799,7 +816,9 @@ void calc_shot (
                     vp2 , wp  , wp1 , wp2 , us  ,
                     us1 , us2 , vs  , vs1 , vs2 ,
                     ws  , ws1 , ws2 , u   , v   , w,
-                    nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront,ncz_shot, l );
+                    nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront,ncz_shot, l ,
+                    ncy_shot,ncx_shot, c0 , dtx, dtz
+                );
 
             double *swap_temp;
             swap_temp = up2; up2 = up1; up1 = up; up = swap_temp;
@@ -1008,6 +1027,8 @@ int main ( int argc, char **argv ) {
 
     dtx = dt / unit;
     dtz = dt / unit;
+
+#pragma offload_transfer target(mic:0) in(dtx) in(dtz) in(ncy_shot) in(ncx_shot)
 
     fout = fopen ( outfile, "wb" );
 
