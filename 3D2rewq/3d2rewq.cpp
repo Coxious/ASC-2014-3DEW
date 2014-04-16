@@ -15,7 +15,13 @@
 
 #define DEBUG_NO_PARALLEL
 
-#define USE_MIC_MAX_LENGTH_THRESHOLD 	100
+#ifdef __MIC__
+#	define	CORE_NUM 64
+#else
+#	define	CORE_NUM 8
+#endif
+
+#define USE_MIC_MAX_LENGTH_THRESHOLD 	1000
 
 #define MIC_CPU_RATE	0.6
 
@@ -26,6 +32,8 @@
 #define POSITION_INDEX_HOST_Z(_z,_y,_x)        ((_y)*nx*nz + (_x)*nz + (_z))
 
 //#define POSITION_DEBUG_ASSERT
+
+//#define
 
 #ifndef POSITION_DEBUG_ASSERT
 
@@ -453,8 +461,6 @@ void calc_single_l (
         ) {
 
 
-    for ( int k = k_begin; k < k_end; k++ ) {
-
 #ifdef __MIC__
         /*
            MIC_VAR int ishot, ncy_shot_inner, ncx_shot_inner;
@@ -474,15 +480,32 @@ void calc_single_l (
          // vvs2_dtz_dtz , vvs2_dtx_dtx , vvp2_dtz_dtz , vvp2_dtz_dtx , vvs2_dtz_dtx);}
 #endif
 
-           calc_single_slice(
-		        i_begin, i_end, j_begin, j_end, k,
-		        up_inner  , up_inner1 , up_inner2 , vp_inner  , vp_inner1 ,
-		        vp_inner2 , wp_inner  , wp_inner1 , wp_inner2 , us_inner  ,
-		        us_inner1 , us_inner2 , vs_inner  , vs_inner1 , vs_inner2 ,
-		        ws_inner  , ws_inner1 , ws_inner2 , u_inner   , v_inner   , w_inner,
-		        nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront, ncz_shot_new, l_inner,
-		        ncy_shot_inner,ncx_shot_inner,c0_inner ,dtx_inner,dtz_inner
-	        );
+	int n_slice_on_each_core = (k_end - k_begin) / CORE_NUM;
+	int k;
+
+    #pragma omp parallel for private(k)
+    for ( k = k_begin; k < k_end; k+= n_slice_on_each_core ) {
+           for(int k_real = k; k_real< n_slice_on_each_core + k ; ++k_real)
+	           calc_single_slice(
+			        i_begin, i_end, j_begin, j_end, k_real,
+			        up_inner  , up_inner1 , up_inner2 , vp_inner  , vp_inner1 ,
+			        vp_inner2 , wp_inner  , wp_inner1 , wp_inner2 , us_inner  ,
+			        us_inner1 , us_inner2 , vs_inner  , vs_inner1 , vs_inner2 ,
+			        ws_inner  , ws_inner1 , ws_inner2 , u_inner   , v_inner   , w_inner,
+			        nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront, ncz_shot_new, l_inner,
+			        ncy_shot_inner,ncx_shot_inner,c0_inner ,dtx_inner,dtz_inner
+		        );
+
+	for (; k < k_end; ++k )
+		calc_single_slice(
+			        i_begin, i_end, j_begin, j_end, k,
+			        up_inner  , up_inner1 , up_inner2 , vp_inner  , vp_inner1 ,
+			        vp_inner2 , wp_inner  , wp_inner1 , wp_inner2 , us_inner  ,
+			        us_inner1 , us_inner2 , vs_inner  , vs_inner1 , vs_inner2 ,
+			        ws_inner  , ws_inner1 , ws_inner2 , u_inner   , v_inner   , w_inner,
+			        nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront, ncz_shot_new, l_inner,
+			        ncy_shot_inner,ncx_shot_inner,c0_inner ,dtx_inner,dtz_inner
+		        );
     }
 
     for ( int k = k_begin; k < k_end; k++ )
@@ -722,46 +745,46 @@ void calc_shot (
         j_begin = 5 + n_mic_front - nfront;
         j_end	= n_mic_front - nfront + nMicYLength + 5;
 
-        ///////////////Debug
-        /*
-        if(nMicXLength >= USE_MIC_MAX_LENGTH_THRESHOLD) {
-            FILE *test1 = fopen("cpu_output.txt", "w");
-            for(int i = i_begin; i < i_end; i++)
-                for(int j = j_begin; j<j_end; j++)
-                    for(int k = k_mic_begin; k<n_mic_top - ntop +nMicZLength +5; k++)
-                        fprintf(test1, "%d %d %d %lf %lf %lf\n", i, j, k, debug_u[POSITION_INDEX_X(k, j, i)], debug_u[POSITION_INDEX_X(k, j, i)], debug_u[POSITION_INDEX_X(k, j, i)]);
-        }
-        */
-        calc_single_l ( i_begin, i_end, j_begin, j_end, 5 + n_mic_top - ntop, n_mic_top - ntop + nMicZLength + 5,
-                debug_up  , debug_up1 , debug_up2 , debug_vp  , debug_vp1 ,
-                debug_vp2 , debug_wp  , debug_wp1 , debug_wp2 , debug_us  ,
-                debug_us1 , debug_us2 , debug_vs  , debug_vs1 , debug_vs2 ,
-                debug_ws  , debug_ws1 , debug_ws2 , debug_u   , debug_v   , debug_w,
-                nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront, ncz_shot_shaddow, l ,
-                ncy_shot,ncx_shot, c0 , dtx, dtz
-                );
+//         ///////////////Debug
+//         /*
+//         if(nMicXLength >= USE_MIC_MAX_LENGTH_THRESHOLD) {
+//             FILE *test1 = fopen("cpu_output.txt", "w");
+//             for(int i = i_begin; i < i_end; i++)
+//                 for(int j = j_begin; j<j_end; j++)
+//                     for(int k = k_mic_begin; k<n_mic_top - ntop +nMicZLength +5; k++)
+//                         fprintf(test1, "%d %d %d %lf %lf %lf\n", i, j, k, debug_u[POSITION_INDEX_X(k, j, i)], debug_u[POSITION_INDEX_X(k, j, i)], debug_u[POSITION_INDEX_X(k, j, i)]);
+//         }
+//         */
+//         calc_single_l ( i_begin, i_end, j_begin, j_end, 5 + n_mic_top - ntop, n_mic_top - ntop + nMicZLength + 5,
+//                 debug_up  , debug_up1 , debug_up2 , debug_vp  , debug_vp1 ,
+//                 debug_vp2 , debug_wp  , debug_wp1 , debug_wp2 , debug_us  ,
+//                 debug_us1 , debug_us2 , debug_vs  , debug_vs1 , debug_vs2 ,
+//                 debug_ws  , debug_ws1 , debug_ws2 , debug_u   , debug_v   , debug_w,
+//                 nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront, ncz_shot_shaddow, l ,
+//                 ncy_shot,ncx_shot, c0 , dtx, dtz
+//                 );
 
-/*
-        if(nMicXLength >= USE_MIC_MAX_LENGTH_THRESHOLD) {
-            for(int i = i_begin; i < i_end; i++)
-                for(int j = j_begin; j<j_end; j++)
-                    for(int k = k_mic_begin; k<n_mic_top - ntop +nMicZLength +5; k++)
-                        fprintf(test1, "%d %d %d %lf %lf %lf\n", i, j, k, debug_u[POSITION_INDEX_X(k, j, i)], debug_u[POSITION_INDEX_X(k, j, i)], debug_u[POSITION_INDEX_X(k, j, i)]);
-            fclose(test1);
-        }*/
+// /*
+//         if(nMicXLength >= USE_MIC_MAX_LENGTH_THRESHOLD) {
+//             for(int i = i_begin; i < i_end; i++)
+//                 for(int j = j_begin; j<j_end; j++)
+//                     for(int k = k_mic_begin; k<n_mic_top - ntop +nMicZLength +5; k++)
+//                         fprintf(test1, "%d %d %d %lf %lf %lf\n", i, j, k, debug_u[POSITION_INDEX_X(k, j, i)], debug_u[POSITION_INDEX_X(k, j, i)], debug_u[POSITION_INDEX_X(k, j, i)]);
+//             fclose(test1);
+//         }*/
 
-        double *swap_temp;
-        swap_temp = debug_up2; debug_up2 = debug_up1; debug_up1 = debug_up; debug_up = swap_temp;
-        swap_temp = debug_vp2; debug_vp2 = debug_vp1; debug_vp1 = debug_vp; debug_vp = swap_temp;
-        swap_temp = debug_wp2; debug_wp2 = debug_wp1; debug_wp1 = debug_wp; debug_wp = swap_temp;
-        swap_temp = debug_us2; debug_us2 = debug_us1; debug_us1 = debug_us; debug_us = swap_temp;
-        swap_temp = debug_vs2; debug_vs2 = debug_vs1; debug_vs1 = debug_vs; debug_vs = swap_temp;
-        swap_temp = debug_ws2; debug_ws2 = debug_ws1; debug_ws1 = debug_ws; debug_ws = swap_temp;
+//         double *swap_temp;
+//         swap_temp = debug_up2; debug_up2 = debug_up1; debug_up1 = debug_up; debug_up = swap_temp;
+//         swap_temp = debug_vp2; debug_vp2 = debug_vp1; debug_vp1 = debug_vp; debug_vp = swap_temp;
+//         swap_temp = debug_wp2; debug_wp2 = debug_wp1; debug_wp1 = debug_wp; debug_wp = swap_temp;
+//         swap_temp = debug_us2; debug_us2 = debug_us1; debug_us1 = debug_us; debug_us = swap_temp;
+//         swap_temp = debug_vs2; debug_vs2 = debug_vs1; debug_vs1 = debug_vs; debug_vs = swap_temp;
+//         swap_temp = debug_ws2; debug_ws2 = debug_ws1; debug_ws1 = debug_ws; debug_ws = swap_temp;
 
-        ///////////////
+//         ///////////////
 
-        if ( nMicXLength < USE_MIC_MAX_LENGTH_THRESHOLD ) {
-
+        //if ( nMicXLength < USE_MIC_MAX_LENGTH_THRESHOLD ) {
+        if(1){
             k_begin	= 5 + n_mic_top - ntop;
             k_end	= n_mic_top - ntop + nMicZLength + 5;
 //            printf("%d %d\n", k_begin, k_end);
