@@ -13,7 +13,7 @@
 
 #define DEBUG_NO_PARALLEL
 
-#define USE_MIC_MAX_LENGTH_THRESHOLD 	90
+#define USE_MIC_MAX_LENGTH_THRESHOLD 	100
 
 #define MIC_CPU_RATE	0.6
 
@@ -371,8 +371,11 @@ MIC_VAR
 
                 for ( int kk = 1; kk <= 5; kk++ ) {
                     for ( int kkk = 1; kkk <= 5; kkk++ ) {
-                        current_c = c[1 + kk][kkk - 1];
 
+                        current_c = c[1 + kk][kkk - 1];
+#ifdef __MIC__
+//                    	printf("current_c mic %lf\n",current_c);
+#endif
                         _tempuxy = u_inner[POSITION_INDEX_X ( k, j + kkk, i + kk )];
                         _tempvxy = v_inner[POSITION_INDEX_X ( k, j + kkk, i + kk )];
 
@@ -417,11 +420,14 @@ MIC_VAR
 
                         tempuxy = tempuxy + ( current_c * _tempuxy );
                         tempvxy = tempvxy + ( current_c * _tempvxy );
-                        if(tempuxz - 0.0 > 1e-6)
-                            for(int qq = 0;qq<1;qq++) printf("i %d j %d k %d tempuxz %lf tempwxz %lf tempvyz %lf tempwyz %lf tempuxy %lf tempvxy %lf\n",i,j,k,_tempuxz , _tempwxz , _tempvyz , _tempwyz , _tempuxy , _tempvxy);
 
                     } // for(kkk=1;kkk<=5;kkk++) end
                 } //for(kk=1;kk<5;kk++) end
+#ifdef __MIC__
+//                        if(tempuxz - 0.0 > 1e-6)
+//                            for(int qq = 0;qq<1;qq++) printf("i %d j %d k %d tempuxz %lf tempwxz %lf tempvyz %lf tempwyz %lf tempuxy %lf tempvxy %lf\n",i,j,k,_tempuxz , _tempwxz , _tempvyz , _tempwyz , _tempuxy , _tempvxy);
+                printf("nIndex %d\n",nIndex);
+#endif
                 up_inner[nIndex] = tempux2 + tempvxy * vvp2_dtz_dtx                                       + tempwxz * vvp2_dtz_dtx;
                 vp_inner[nIndex] = tempuxy * vvp2_dtz_dtx             + tempvy2 + tempwyz * vvp2_dtz_dtx  ;
                 wp_inner[nIndex] = px * wave[l_inner - 1]                       + tempvyz * vvp2_dtz_dtx            + tempwz2 + tempuxz * vvp2_dtz_dtx;
