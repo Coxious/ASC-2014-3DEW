@@ -52,8 +52,8 @@
 #define ROUND_TO_SIZE_LESS(_length,_alignment)  \
     ((_length) &~ ((_alignment)-1))
 
-#define vpp2(_z) ((((_z)+ntop-5)<210)?(5290000):(((_z)+ntop-5)>=260?12250000:7840000))
-#define vss2(_z) ((((_z)+ntop-5)<210)?(1517824):(((_z)+ntop-5)>=260?3644281:2277081))
+#define vpp2(_z) ((((_z)+ntop-5)<210)?(5290000.):(((_z)+ntop-5)>=260?12250000.:7840000.))
+#define vss2(_z) ((((_z)+ntop-5)<210)?(1517824.):(((_z)+ntop-5)>=260?3644281.:2277081.))
 
 double * debug_u;
 double * debug_v;
@@ -234,16 +234,38 @@ void initailize() {
     }
 }
 
+MIC_VAR double get_sum(double * data,
+	int nMicMaxXLength,
+	int nMicMaxYLength,
+	int i_begin,
+	int i_end,
+	int j_begin,
+	int j_end,
+	int k_begin,
+	int k_end
+	)
+{
+   double sum = 0.0;
+   for ( int k = k_begin - 5; k < k_end + 5; k++ ) {
+        for ( int j = j_begin - 5 ; j < j_end + 5; j++ ) {
+            for ( int i = i_begin - 5 ; i < i_end + 5 ; i++ ) {
+	                sum += fabs(data[POSITION_INDEX_X ( k, j, i )]);
+	            }
+	        }
+	    }
+	return sum;
+}
+
 MIC_VAR
  void calc_single_l (
         int i_begin, int i_end, int j_begin, int j_end, int k_begin, int k_end,
-        double * up  , double * up1 , double * up2 , double * vp  , double * vp1 ,
-        double * vp2 , double * wp  , double * wp1 , double * wp2 , double * us  ,
-        double * us1 , double * us2 , double * vs  , double * vs1 , double * vs2 ,
-        double * ws  , double * ws1 , double * ws2 , double * u   , double * v   , double * w,
-        int nMicMaxXLength, int nMicMaxYLength, int ntop, int nleft, int nfront, int ncz_shot_new, int l,
-		int ncy_shot,int ncx_shot,double c0 ,double dtx,double dtz
-		) {
+        double * up_inner  , double * up_inner1 , double * up_inner2 , double * vp_inner  , double * vp_inner1 ,
+        double * vp_inner2 , double * wp_inner  , double * wp_inner1 , double * wp_inner2 , double * us_inner  ,
+        double * us_inner1 , double * us_inner2 , double * vs_inner  , double * vs_inner1 , double * vs_inner2 ,
+        double * ws_inner  , double * ws_inner1 , double * ws_inner2 , double * u_inner   , double * v_inner   , double * w_inner,
+        int nMicMaxXLength, int nMicMaxYLength, int ntop, int nleft, int nfront, int ncz_shot_new, int l_inner,
+        int ncy_shot_inner,int ncx_shot_inner,double c0_inner ,double dtx_inner,double dtz_inner
+        ) {
     double vvp2, vvs2, tempux2, tempuy2, tempuz2, tempvx2, tempvy2, tempvz2,
     tempwx2, tempwy2, tempwz2, tempuxz, tempuxy, tempvyz, tempvxy, tempwxz, tempwyz;
 
@@ -257,38 +279,36 @@ MIC_VAR
     double vvp2_dtz_dtx;
     double vvs2_dtz_dtx;
 
-#ifndef DEBUG_NO_PARALLEL
-#pragma omp parallel for private(i,j,k)
-#endif
     for ( int k = k_begin; k < k_end; k++ ) {
 
         vvp2 = vpp2 ( k );
         vvs2 = vss2 ( k );
 
-        vvs2_dtz_dtz = vvs2 * dtz * dtz;
-        vvp2_dtx_dtx = vvp2 * dtx * dtx;
-        vvs2_dtx_dtx = vvs2 * dtx * dtx;
-        vvp2_dtz_dtz = vvp2 * dtz * dtz;
-        vvp2_dtz_dtx = vvp2 * dtz * dtx;
-        vvs2_dtz_dtx = vvs2 * dtz * dtx;
-
+        vvs2_dtz_dtz = vvs2 * dtz_inner * dtz_inner;
+        vvp2_dtx_dtx = vvp2 * dtx_inner * dtx_inner;
+        vvs2_dtx_dtx = vvs2 * dtx_inner * dtx_inner;
+        vvp2_dtz_dtz = vvp2 * dtz_inner * dtz_inner;
+        vvp2_dtz_dtx = vvp2 * dtz_inner * dtx_inner;
+        vvs2_dtz_dtx = vvs2 * dtz_inner * dtx_inner;
 #ifdef __MIC__
         /*
-           MIC_VAR int ishot, ncy_shot, ncx_shot;
+           MIC_VAR int ishot, ncy_shot_inner, ncx_shot_inner;
 
            MIC_VAR double *wave;
-           MIC_VAR double nshot, t0, c0;
-           MIC_VAR double dtx, dtz;
+           MIC_VAR double nshot, t0, c0_inner;
+           MIC_VAR double dtx_inner, dtz_inner;
            */
-        	for(int qq=0;qq<20;qq++){printf("%d %d %d %d %d %d\n%p %p %p %p %p \n%p %p %p %p %p \n%p %p %p %p %p \n%p %p %p %p %p %p \n%d %d %d %d %d %d %d\nncx_shot %d ncy_shot %d c0 %lf dtz %lf dtx %lf c[1][1] %lf wave[l - 1]%lf\n",
+            for(int qq=0;qq<1;qq++){printf("%d %d %d %d %d %d\n%p %p %p %p %p \n%p %p %p %p %p \n%p %p %p %p %p \n%p %p %p %p %p %p \n%d %d %d %d %d %d %d\nncx_shot %d ncy_shot_inner %d c0_inner %lf dtz_inner %lf dtx_inner %lf c[1][1] %lf wave[l_inner - 1]%lf\n vvs2_dtz_dtz %lf vvs2_dtx_dtx %lf vvp2_dtz_dtz %lf vvp2_dtz_dtx %lf vvs2_dtz_dtx %lf\n",
          i_begin,  i_end,  j_begin,  j_end,  k_begin,  k_end,
-         up  ,  up1 ,  up2 ,  vp  ,  vp1 ,
-         vp2 ,  wp  ,  wp1 ,  wp2 ,  us  ,
-         us1 ,  us2 ,  vs  ,  vs1 ,  vs2 ,
-         ws  ,  ws1 ,  ws2 ,  u   ,  v   ,  w,
-         nMicMaxXLength,  nMicMaxYLength,  ntop,  nleft,  nfront,  ncz_shot_new,l,
-         ncx_shot,ncy_shot,c0,dtz,dtx,c[0][1],wave[l - 1]);}
+         up_inner  ,  up_inner1 ,  up_inner2 ,  vp_inner  ,  vp_inner1 ,
+         vp_inner2 ,  wp_inner  ,  wp_inner1 ,  wp_inner2 ,  us_inner  ,
+         us_inner1 ,  us_inner2 ,  vs_inner  ,  vs_inner1 ,  vs_inner2 ,
+         ws_inner  ,  ws_inner1 ,  ws_inner2 ,  u_inner   ,  v_inner   ,  w_inner,
+         nMicMaxXLength,  nMicMaxYLength,  ntop,  nleft,  nfront,  ncz_shot_new,l_inner,
+         ncx_shot_inner,ncy_shot_inner,c0_inner,dtz_inner,dtx_inner,c[0][1],wave[l_inner - 1],
+         vvs2_dtz_dtz , vvs2_dtx_dtx , vvp2_dtz_dtz , vvp2_dtz_dtx , vvs2_dtz_dtx);}
 #endif
+
         for ( int j = j_begin; j < j_end; j++ ) {
             for ( int i = i_begin; i < i_end; i++ ) {
 
@@ -296,10 +316,7 @@ MIC_VAR
                 int nIndex = POSITION_INDEX_X ( k, j, i );
 
 
-                #ifdef __MIC__
-//                				for(int qq=0;qq<1000;qq++){printf("%p\n",u);}
-                #endif
-                if ( i - 5 + nleft == ncx_shot - 1 && j - 5 + nfront == ncy_shot - 1 && k - 5 + ntop == ncz_shot_new - 1 ) {
+                if ( i - 5 + nleft == ncx_shot_inner - 1 && j - 5 + nfront == ncy_shot_inner - 1 && k - 5 + ntop == ncz_shot_new - 1 ) {
                     px = 1.;
                 } else {
                     px = 0.;
@@ -322,75 +339,75 @@ MIC_VAR
                 tempwyz = 0.0f;
 
                 for ( int kk = 1; kk <= 5; kk++ ) {
-                    tempux2 = tempux2 + c[0][kk - 1] * ( u[nIndex + kk] + u[nIndex - kk] );
+                    tempux2 = tempux2 + c[0][kk - 1] * ( u_inner[nIndex + kk] + u_inner[nIndex - kk] );
 
-                    tempvx2 = tempvx2 + c[0][kk - 1] * ( v[nIndex + kk] + v[nIndex - kk] );
+                    tempvx2 = tempvx2 + c[0][kk - 1] * ( v_inner[nIndex + kk] + v_inner[nIndex - kk] );
 
-                    tempwx2 = tempwx2 + c[0][kk - 1] * ( w[nIndex + kk] + w[nIndex - kk] );
+                    tempwx2 = tempwx2 + c[0][kk - 1] * ( w_inner[nIndex + kk] + w_inner[nIndex - kk] );
 
-                    tempuy2 = tempuy2 + c[0][kk - 1] * ( u[POSITION_INDEX_X ( k, j + kk, i )] + u[POSITION_INDEX_X ( k, j - kk, i )] );
+                    tempuy2 = tempuy2 + c[0][kk - 1] * ( u_inner[POSITION_INDEX_X ( k, j + kk, i )] + u_inner[POSITION_INDEX_X ( k, j - kk, i )] );
 
-                    tempvy2 = tempvy2 + c[0][kk - 1] * ( v[POSITION_INDEX_X ( k, j + kk, i )] + v[POSITION_INDEX_X ( k, j - kk, i )] );
+                    tempvy2 = tempvy2 + c[0][kk - 1] * ( v_inner[POSITION_INDEX_X ( k, j + kk, i )] + v_inner[POSITION_INDEX_X ( k, j - kk, i )] );
 
-                    tempwy2 = tempwy2 + c[0][kk - 1] * ( w[POSITION_INDEX_X ( k, j + kk, i )] + w[POSITION_INDEX_X ( k, j - kk, i )] );
+                    tempwy2 = tempwy2 + c[0][kk - 1] * ( w_inner[POSITION_INDEX_X ( k, j + kk, i )] + w_inner[POSITION_INDEX_X ( k, j - kk, i )] );
 
-                    tempuz2 = tempuz2 + c[0][kk - 1] * ( u[POSITION_INDEX_X ( k + kk, j, i )] + u[POSITION_INDEX_X ( k - kk, j, i )] );
+                    tempuz2 = tempuz2 + c[0][kk - 1] * ( u_inner[POSITION_INDEX_X ( k + kk, j, i )] + u_inner[POSITION_INDEX_X ( k - kk, j, i )] );
 
-                    tempvz2 = tempvz2 + c[0][kk - 1] * ( v[POSITION_INDEX_X ( k + kk, j, i )] + v[POSITION_INDEX_X ( k - kk, j, i )] );
+                    tempvz2 = tempvz2 + c[0][kk - 1] * ( v_inner[POSITION_INDEX_X ( k + kk, j, i )] + v_inner[POSITION_INDEX_X ( k - kk, j, i )] );
 
-                    tempwz2 = tempwz2 + c[0][kk - 1] * ( w[POSITION_INDEX_X ( k + kk, j, i )] + w[POSITION_INDEX_X ( k - kk, j, i )] );
+                    tempwz2 = tempwz2 + c[0][kk - 1] * ( w_inner[POSITION_INDEX_X ( k + kk, j, i )] + w_inner[POSITION_INDEX_X ( k - kk, j, i )] );
 
                 } //for(kk=1;kk<=5;kk++) end
 
-                tempux2 = ( tempux2 + c0 * u[nIndex] ) * vvp2_dtx_dtx;
-                tempvx2 = ( tempvx2 + c0 * v[nIndex] ) * vvs2_dtx_dtx;
-                tempwx2 = ( tempwx2 + c0 * w[nIndex] ) * vvs2_dtx_dtx;
-                tempuy2 = ( tempuy2 + c0 * u[nIndex] ) * vvs2_dtx_dtx;
-                tempvy2 = ( tempvy2 + c0 * v[nIndex] ) * vvp2_dtx_dtx;
-                tempwy2 = ( tempwy2 + c0 * w[nIndex] ) * vvs2_dtx_dtx;
-                tempuz2 = ( tempuz2 + c0 * u[nIndex] ) * vvs2_dtz_dtz;
-                tempvz2 = ( tempvz2 + c0 * v[nIndex] ) * vvs2_dtz_dtz;
-                tempwz2 = ( tempwz2 + c0 * w[nIndex] ) * vvp2_dtz_dtz;
+                tempux2 = ( tempux2 + c0_inner * u_inner[nIndex] ) * vvp2_dtx_dtx;
+                tempvx2 = ( tempvx2 + c0_inner * v_inner[nIndex] ) * vvs2_dtx_dtx;
+                tempwx2 = ( tempwx2 + c0_inner * w_inner[nIndex] ) * vvs2_dtx_dtx;
+                tempuy2 = ( tempuy2 + c0_inner * u_inner[nIndex] ) * vvs2_dtx_dtx;
+                tempvy2 = ( tempvy2 + c0_inner * v_inner[nIndex] ) * vvp2_dtx_dtx;
+                tempwy2 = ( tempwy2 + c0_inner * w_inner[nIndex] ) * vvs2_dtx_dtx;
+                tempuz2 = ( tempuz2 + c0_inner * u_inner[nIndex] ) * vvs2_dtz_dtz;
+                tempvz2 = ( tempvz2 + c0_inner * v_inner[nIndex] ) * vvs2_dtz_dtz;
+                tempwz2 = ( tempwz2 + c0_inner * w_inner[nIndex] ) * vvp2_dtz_dtz;
 
                 for ( int kk = 1; kk <= 5; kk++ ) {
                     for ( int kkk = 1; kkk <= 5; kkk++ ) {
                         current_c = c[1 + kk][kkk - 1];
 
-                        _tempuxy = u[POSITION_INDEX_X ( k, j + kkk, i + kk )];
-                        _tempvxy = v[POSITION_INDEX_X ( k, j + kkk, i + kk )];
+                        _tempuxy = u_inner[POSITION_INDEX_X ( k, j + kkk, i + kk )];
+                        _tempvxy = v_inner[POSITION_INDEX_X ( k, j + kkk, i + kk )];
 
-                        _tempuxy -= u[POSITION_INDEX_X ( k, j - kkk, i + kk )];
-                        _tempvxy -= v[POSITION_INDEX_X ( k, j - kkk, i + kk )];
+                        _tempuxy -= u_inner[POSITION_INDEX_X ( k, j - kkk, i + kk )];
+                        _tempvxy -= v_inner[POSITION_INDEX_X ( k, j - kkk, i + kk )];
 
-                        _tempuxy += u[POSITION_INDEX_X ( k, j - kkk, i - kk )];
-                        _tempvxy += v[POSITION_INDEX_X ( k, j - kkk, i - kk )];
+                        _tempuxy += u_inner[POSITION_INDEX_X ( k, j - kkk, i - kk )];
+                        _tempvxy += v_inner[POSITION_INDEX_X ( k, j - kkk, i - kk )];
 
-                        _tempuxy -= u[POSITION_INDEX_X ( k, j + kkk, i - kk )];
-                        _tempvxy -= v[POSITION_INDEX_X ( k, j + kkk, i - kk )];
+                        _tempuxy -= u_inner[POSITION_INDEX_X ( k, j + kkk, i - kk )];
+                        _tempvxy -= v_inner[POSITION_INDEX_X ( k, j + kkk, i - kk )];
 
-                        _tempvyz = v[POSITION_INDEX_X ( k + kkk, j + kk, i )];
-                        _tempwyz = w[POSITION_INDEX_X ( k + kkk, j + kk, i )];
+                        _tempvyz = v_inner[POSITION_INDEX_X ( k + kkk, j + kk, i )];
+                        _tempwyz = w_inner[POSITION_INDEX_X ( k + kkk, j + kk, i )];
 
-                        _tempvyz -= v[POSITION_INDEX_X ( k - kkk, j + kk, i )];
-                        _tempwyz -= w[POSITION_INDEX_X ( k - kkk, j + kk, i )];
+                        _tempvyz -= v_inner[POSITION_INDEX_X ( k - kkk, j + kk, i )];
+                        _tempwyz -= w_inner[POSITION_INDEX_X ( k - kkk, j + kk, i )];
 
-                        _tempvyz += v[POSITION_INDEX_X ( k - kkk, j - kk, i )];
-                        _tempwyz += w[POSITION_INDEX_X ( k - kkk, j - kk, i )];
+                        _tempvyz += v_inner[POSITION_INDEX_X ( k - kkk, j - kk, i )];
+                        _tempwyz += w_inner[POSITION_INDEX_X ( k - kkk, j - kk, i )];
 
-                        _tempvyz -= v[POSITION_INDEX_X ( k + kkk, j - kk, i )];
-                        _tempwyz -= w[POSITION_INDEX_X ( k + kkk, j - kk, i )];
+                        _tempvyz -= v_inner[POSITION_INDEX_X ( k + kkk, j - kk, i )];
+                        _tempwyz -= w_inner[POSITION_INDEX_X ( k + kkk, j - kk, i )];
 
-                        _tempuxz = u[POSITION_INDEX_X ( k + kkk, j, i + kk )];
-                        _tempwxz = w[POSITION_INDEX_X ( k + kkk, j, i + kk )];
+                        _tempuxz = u_inner[POSITION_INDEX_X ( k + kkk, j, i + kk )];
+                        _tempwxz = w_inner[POSITION_INDEX_X ( k + kkk, j, i + kk )];
 
-                        _tempuxz -= u[POSITION_INDEX_X ( k - kkk, j, i + kk )];
-                        _tempwxz -= w[POSITION_INDEX_X ( k - kkk, j, i + kk )];
+                        _tempuxz -= u_inner[POSITION_INDEX_X ( k - kkk, j, i + kk )];
+                        _tempwxz -= w_inner[POSITION_INDEX_X ( k - kkk, j, i + kk )];
 
-                        _tempuxz += u[POSITION_INDEX_X ( k - kkk, j, i - kk )];
-                        _tempwxz += w[POSITION_INDEX_X ( k - kkk, j, i - kk )];
+                        _tempuxz += u_inner[POSITION_INDEX_X ( k - kkk, j, i - kk )];
+                        _tempwxz += w_inner[POSITION_INDEX_X ( k - kkk, j, i - kk )];
 
-                        _tempuxz -= u[POSITION_INDEX_X ( k + kkk, j, i - kk )];
-                        _tempwxz -= w[POSITION_INDEX_X ( k + kkk, j, i - kk )];
+                        _tempuxz -= u_inner[POSITION_INDEX_X ( k + kkk, j, i - kk )];
+                        _tempwxz -= w_inner[POSITION_INDEX_X ( k + kkk, j, i - kk )];
 
                         tempuxz = tempuxz + ( current_c * _tempuxz );
                         tempwxz = tempwxz + ( current_c * _tempwxz );
@@ -400,51 +417,57 @@ MIC_VAR
 
                         tempuxy = tempuxy + ( current_c * _tempuxy );
                         tempvxy = tempvxy + ( current_c * _tempvxy );
+                        if(tempuxz - 0.0 > 1e-6)
+                            for(int qq = 0;qq<1;qq++) printf("i %d j %d k %d tempuxz %lf tempwxz %lf tempvyz %lf tempwyz %lf tempuxy %lf tempvxy %lf\n",i,j,k,_tempuxz , _tempwxz , _tempvyz , _tempwyz , _tempuxy , _tempvxy);
 
                     } // for(kkk=1;kkk<=5;kkk++) end
-                } //for(kk=1;kk<=5;kk++) end
-                up[nIndex] = tempux2 + tempvxy * vvp2_dtz_dtx										+ tempwxz * vvp2_dtz_dtx;
-                vp[nIndex] = tempuxy * vvp2_dtz_dtx				+ tempvy2 + tempwyz * vvp2_dtz_dtx 	;
-                wp[nIndex] = px * wave[l - 1]						+ tempvyz * vvp2_dtz_dtx			+ tempwz2 + tempuxz * vvp2_dtz_dtx;
+                } //for(kk=1;kk<5;kk++) end
+                up_inner[nIndex] = tempux2 + tempvxy * vvp2_dtz_dtx                                       + tempwxz * vvp2_dtz_dtx;
+                vp_inner[nIndex] = tempuxy * vvp2_dtz_dtx             + tempvy2 + tempwyz * vvp2_dtz_dtx  ;
+                wp_inner[nIndex] = px * wave[l_inner - 1]                       + tempvyz * vvp2_dtz_dtx            + tempwz2 + tempuxz * vvp2_dtz_dtx;
 
-                us[nIndex] = - tempvxy * vvs2_dtz_dtx			+ tempuy2							+ tempuz2 - tempwxz * vvs2_dtz_dtx;;
-                vs[nIndex] = tempvx2 - tempuxy * vvs2_dtz_dtx   - tempwyz * vvs2_dtz_dtx			+ tempvz2;
-                ws[nIndex] = tempwx2							+ tempwy2 - tempvyz * vvs2_dtz_dtx	- tempuxz * vvs2_dtz_dtx;
+                us_inner[nIndex] = - tempvxy * vvs2_dtz_dtx           + tempuy2                           + tempuz2 - tempwxz * vvs2_dtz_dtx;;
+                vs_inner[nIndex] = tempvx2 - tempuxy * vvs2_dtz_dtx   - tempwyz * vvs2_dtz_dtx            + tempvz2;
+                ws_inner[nIndex] = tempwx2                            + tempwy2 - tempvyz * vvs2_dtz_dtx  - tempuxz * vvs2_dtz_dtx;
                 // //Debug
-                // if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
-                // 	printf("[X]%lf wave:%lf px:%lf should be %lf\n", wp[nIndex],wave[l-1],px,wave[l-1]*px);
+                // if(i-5+nleft==ncx_shot_inner-1&&j-5+nfront==ncy_shot_inner-1&&k-5+ntop==ncz_shot-1)
+                //  printf("[X]%lf wave:%lf px:%lf should be %lf\n", wp_inner[nIndex],wave[l_inner-1],px,wave[l_inner-1]*px);
             }
         }
     }
 
-#ifndef DEBUG_NO_PARALLEL
-#pragma omp parallel for private(i,j,k)
-#endif
     for ( int k = k_begin; k < k_end; k++ )
         for ( int j = j_begin; j < j_end; j++ )
             for ( int i = i_begin; i < i_end; i++ ) {
                 int nIndex              = POSITION_INDEX_X ( k, j, i );
 
-                up[nIndex] += 2 * up1[nIndex] - up2[nIndex];
-                vp[nIndex] += 2 * vp1[nIndex] - vp2[nIndex];
-                wp[nIndex] += 2 * wp1[nIndex] - wp2[nIndex];
-                us[nIndex] += 2 * us1[nIndex] - us2[nIndex];
-                vs[nIndex] += 2 * vs1[nIndex] - vs2[nIndex];
-                ws[nIndex] += 2 * ws1[nIndex] - ws2[nIndex];
-                // if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
-                // 	printf("[Final]%lf\n", wp[nIndex]);
-                u[nIndex] = up[nIndex] + us[nIndex];
-                v[nIndex] = vp[nIndex] + vs[nIndex];
-                w[nIndex] = wp[nIndex] + ws[nIndex];
+                up_inner[nIndex] += 2 * up_inner1[nIndex] - up_inner2[nIndex];
+                vp_inner[nIndex] += 2 * vp_inner1[nIndex] - vp_inner2[nIndex];
+                wp_inner[nIndex] += 2 * wp_inner1[nIndex] - wp_inner2[nIndex];
+                us_inner[nIndex] += 2 * us_inner1[nIndex] - us_inner2[nIndex];
+                vs_inner[nIndex] += 2 * vs_inner1[nIndex] - vs_inner2[nIndex];
+                ws_inner[nIndex] += 2 * ws_inner1[nIndex] - ws_inner2[nIndex];
+                // if(i-5+nleft==ncx_shot_inner-1&&j-5+nfront==ncy_shot_inner-1&&k-5+ntop==ncz_shot-1)
+                //  printf("[Final]%lf\n", wp_inner[nIndex]);
+                u_inner[nIndex] = up_inner[nIndex] + us_inner[nIndex];
+                v_inner[nIndex] = vp_inner[nIndex] + vs_inner[nIndex];
+                w_inner[nIndex] = wp_inner[nIndex] + ws_inner[nIndex];
 
-                // if(i-5+nleft==ncx_shot-1&&j-5+nfront==ncy_shot-1&&k-5+ntop==ncz_shot-1)
-                // 	printf("[Final]%lf\n", w_x[nIndex]);
+                // if(i-5+nleft==ncx_shot_inner-1&&j-5+nfront==ncy_shot_inner-1&&k-5+ntop==ncz_shot-1)
+                //  printf("[Final]%lf\n", w_x[nIndex]);
             }//for(i=nleft;i<nright;i++) end
+#ifdef __MIC__
+//                              for(int qq=0;qq<1000;qq++){printf("%p\n",u_inner);}
 
-    // printf("Start waiting....%d\n",l);
+    double sum_up_inner = get_sum(us_inner2,nMicMaxXLength,nMicMaxYLength,i_begin, i_end, j_begin, j_end, k_begin, k_end);
+    double sum_vp = get_sum(vs_inner2,nMicMaxXLength,nMicMaxYLength,i_begin, i_end, j_begin, j_end, k_begin, k_end);
+    double sum_wp = get_sum(ws_inner2,nMicMaxXLength,nMicMaxYLength,i_begin, i_end, j_begin, j_end, k_begin, k_end);
+    for(int qq = 0;qq<10;qq++)printf("sum of u_inner:%lf v_inner:%lf w_inner:%lf\n",sum_up_inner,sum_vp,sum_wp);
+#endif
+
+
+    // printf("Start waiting....%d\n",l_inner);
 }
-
-
 // void seperate_to_work_l()
 // {
 
@@ -509,6 +532,8 @@ void calc_shot (
     int c0_shadow 		= c0;
     int dtx_shadow		= dtx;
     int dtz_shadow		= dtz;
+
+#pragma offload_transfer target(mic:0) in(dtx) in(dtz) in(ncy_shot) in(ncx_shot)
 
     ntop = ntop - 1;
     nfront = nfront - 1;
@@ -641,6 +666,7 @@ void calc_shot (
                 nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront, ncz_shot_shaddow, l ,
                 ncy_shot,ncx_shot, c0 , dtx, dtz
                 );
+
 /*
         if(nMicXLength >= USE_MIC_MAX_LENGTH_THRESHOLD) {
             for(int i = i_begin; i < i_end; i++)
@@ -756,6 +782,7 @@ void calc_shot (
                 signal(mic_u)
             }
 
+
 #pragma offload target(mic:0) \
             in(i_begin) in(i_end) in(j_begin), in(j_end) in(k_mic_end) in(cpu_z_length)\
             in(nMicMaxXLength) in(nMicMaxYLength) in(ntop) in(nleft) in(nfront) in(ncz_shot_shaddow) in(l) \
@@ -866,6 +893,12 @@ void calc_shot (
 				memcpy ( mic_exchange_part_v, &(mic_v[POSITION_INDEX_X(5,0,0)]), sizeof ( double ) * 5 * mic_slice_size_shaddow );
 				memcpy ( mic_exchange_part_w, &(mic_w[POSITION_INDEX_X(5,0,0)]), sizeof ( double ) * 5 * mic_slice_size_shaddow );
 */
+    double sum_up = get_sum(debug_us2,nMicMaxXLength,nMicMaxYLength,i_begin, i_end, j_begin, j_end,k_mic_begin, k_mic_end - cpu_z_length);
+    double sum_vp = get_sum(debug_vs2,nMicMaxXLength,nMicMaxYLength,i_begin, i_end, j_begin, j_end,k_mic_begin, k_mic_end - cpu_z_length);
+    double sum_wp = get_sum(debug_ws2,nMicMaxXLength,nMicMaxYLength,i_begin, i_end, j_begin, j_end,k_mic_begin, k_mic_end - cpu_z_length);
+    for(int qq = 0;qq<10;qq++)printf("cpu sum of u:%lf v:%lf w:%lf\n",sum_up,sum_vp,sum_wp);
+
+
             printf("Start examming.....k_mic_begin:%d\n",k_mic_begin);
             for(int k =  0; k<5;++k)
             	for(int j = j_begin;j<j_end;++j)
