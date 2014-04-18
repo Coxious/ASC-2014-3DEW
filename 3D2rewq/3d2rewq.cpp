@@ -326,7 +326,7 @@ void calc_single_slice (
     vvp2_dtz_dtx = vvp2 * dtz_inner * dtx_inner;
     vvs2_dtz_dtx = vvs2 * dtz_inner * dtx_inner;
 
-    bool print_debug_info = (nMicMaxXLength >= USE_MIC_MAX_LENGTH_THRESHOLD && k == 15);
+    bool print_debug_info = (nMicMaxXLength >= USE_MIC_MAX_LENGTH_THRESHOLD && k == 5);
 
     if(print_debug_info) DEBUG_PRINT("k %d vvs2_dtz_dtz %.12lf vvp2_dtx_dtx %.12lf vvs2_dtx_dtx %.12lf vvp2_dtz_dtz %.12lf vvp2_dtz_dtx %.12lf vvs2_dtz_dtx %.12lf\n",k,vvs2_dtz_dtz,vvp2_dtx_dtx,vvs2_dtx_dtx,vvp2_dtz_dtz,vvp2_dtz_dtx,vvs2_dtz_dtx);
 
@@ -336,14 +336,13 @@ void calc_single_slice (
                 // printf("i:%d j:%d k:%d\n",i-5+nleft,j-5+nfront,k-5+ntop);
                 int nIndex = POSITION_INDEX_X ( k, j, i );
 
-
                 if ( i - 5 + nleft == ncx_shot_inner - 1 && j - 5 + nfront == ncy_shot_inner - 1 && k - 5 + ntop == ncz_shot_new - 1 ) {
                     px = 1.0;
                 } else {
                     px = 0.0;
                 }
 
-                if(print_debug_info) DEBUG_PRINT("i %d j %d k %d nIndex %d px %lf \n",i,j,k,nIndex,px);
+                //if(print_debug_info) DEBUG_PRINT("i %d j %d k %d nIndex %d px %lf \n",i,j,k,nIndex,px);
 
                 tempux2 = 0.0f;
                 tempuy2 = 0.0f;
@@ -383,7 +382,7 @@ void calc_single_slice (
                 } //for(kk=1;kk<=5;kk++) end
 
 
-                if(print_debug_info) DEBUG_PRINT("i %d j %d k %d tempux2 %lf tempvx2 %lf tempwx2 %lf tempuy2 %lf tempvy2 %lf tempwy2 %lf tempuz2 %lf tempvz2 %lf tempwz2 %lf\n",i,j,k,tempux2, tempvx2, tempwx2, tempuy2, tempvy2, tempwy2, tempuz2, tempvz2, tempwz2);
+                //if(print_debug_info) DEBUG_PRINT("i %d j %d k %d tempux2 %lf tempvx2 %lf tempwx2 %lf tempuy2 %lf tempvy2 %lf tempwy2 %lf tempuz2 %lf tempvz2 %lf tempwz2 %lf\n",i,j,k,tempux2, tempvx2, tempwx2, tempuy2, tempvy2, tempwy2, tempuz2, tempvz2, tempwz2);
 
                 tempux2 = ( tempux2 + c0_inner * u_inner[nIndex] ) * vvp2_dtx_dtx;
                 tempvx2 = ( tempvx2 + c0_inner * v_inner[nIndex] ) * vvs2_dtx_dtx;
@@ -395,7 +394,7 @@ void calc_single_slice (
                 tempvz2 = ( tempvz2 + c0_inner * v_inner[nIndex] ) * vvs2_dtz_dtz;
                 tempwz2 = ( tempwz2 + c0_inner * w_inner[nIndex] ) * vvp2_dtz_dtz;
 
-                if(print_debug_info) DEBUG_PRINT("i %d j %d k %d tempux2 %lf tempvx2 %lf tempwx2 %lf tempuy2 %lf tempvy2 %lf tempwy2 %lf tempuz2 %lf tempvz2 %lf tempwz2 %lf\n",i,j,k,tempux2, tempvx2, tempwx2, tempuy2, tempvy2, tempwy2, tempuz2, tempvz2, tempwz2);
+                //if(print_debug_info) DEBUG_PRINT("i %d j %d k %d tempux2 %lf tempvx2 %lf tempwx2 %lf tempuy2 %lf tempvy2 %lf tempwy2 %lf tempuz2 %lf tempvz2 %lf tempwz2 %lf\n",i,j,k,tempux2, tempvx2, tempwx2, tempuy2, tempvy2, tempwy2, tempuz2, tempvz2, tempwz2);
 
                 for ( int kk = 1; kk <= 5; kk++ ) {
                     for ( int kkk = 1; kkk <= 5; kkk++ ) {
@@ -404,26 +403,26 @@ void calc_single_slice (
 #ifdef __MIC__
 //                      printf("current_c mic %lf\n",current_c);
 #endif
-                        _tempuxy = ( u_inner[POSITION_INDEX_X ( k, j + kkk, i + kk )] - u_inner[POSITION_INDEX_X ( k, j - kkk, i + kk )]) + (u_inner[POSITION_INDEX_X ( k, j - kkk, i - kk )] - u_inner[POSITION_INDEX_X ( k, j + kkk, i - kk )]);
-                        _tempvxy = ( v_inner[POSITION_INDEX_X ( k, j + kkk, i + kk )] - v_inner[POSITION_INDEX_X ( k, j - kkk, i + kk )]) + (v_inner[POSITION_INDEX_X ( k, j - kkk, i - kk )] - v_inner[POSITION_INDEX_X ( k, j + kkk, i - kk )]);
+                        _tempuxy = ( u_inner[POSITION_INDEX_X ( k, j + kkk, i + kk )] + u_inner[POSITION_INDEX_X ( k, j - kkk, i - kk )] ) - ( u_inner[POSITION_INDEX_X ( k, j + kkk, i - kk )] + u_inner[POSITION_INDEX_X ( k, j - kkk, i + kk ) ] );
+                        _tempvxy = ( v_inner[POSITION_INDEX_X ( k, j + kkk, i + kk )] + v_inner[POSITION_INDEX_X ( k, j - kkk, i - kk )] ) - ( v_inner[POSITION_INDEX_X ( k, j + kkk, i - kk )] + v_inner[POSITION_INDEX_X ( k, j - kkk, i + kk ) ] );
 
-                        if(print_debug_info) DEBUG_PRINT("i %d j %d k %d kk %d kkk %d %lf %lf %lf %lf %lf %lf %lf %lf\n",i,j,k,kk,kkk,
-                            u_inner[POSITION_INDEX_X ( k, j + kkk, i + kk )] , u_inner[POSITION_INDEX_X ( k, j - kkk, i + kk )] , u_inner[POSITION_INDEX_X ( k, j - kkk, i - kk )] , u_inner[POSITION_INDEX_X ( k, j + kkk, i - kk )],
-                            v_inner[POSITION_INDEX_X ( k, j + kkk, i + kk )] , v_inner[POSITION_INDEX_X ( k, j - kkk, i + kk )] , v_inner[POSITION_INDEX_X ( k, j - kkk, i - kk )] , v_inner[POSITION_INDEX_X ( k, j + kkk, i - kk )]);
+                        // if(print_debug_info) DEBUG_PRINT("i %d j %d k %d kk %d kkk %d %lf %lf %lf %lf %lf %lf %lf %lf\n",i,j,k,kk,kkk,
+                        //     u_inner[POSITION_INDEX_X ( k, j + kkk, i + kk )] , u_inner[POSITION_INDEX_X ( k, j - kkk, i + kk )] , u_inner[POSITION_INDEX_X ( k, j - kkk, i - kk )] , u_inner[POSITION_INDEX_X ( k, j + kkk, i - kk )],
+                        //     v_inner[POSITION_INDEX_X ( k, j + kkk, i + kk )] , v_inner[POSITION_INDEX_X ( k, j - kkk, i + kk )] , v_inner[POSITION_INDEX_X ( k, j - kkk, i - kk )] , v_inner[POSITION_INDEX_X ( k, j + kkk, i - kk )]);
 
-                        _tempvyz = ( v_inner[POSITION_INDEX_X ( k + kkk, j + kk, i )] - v_inner[POSITION_INDEX_X ( k - kkk, j + kk, i )]) + (v_inner[POSITION_INDEX_X ( k - kkk, j - kk, i )] - v_inner[POSITION_INDEX_X ( k + kkk, j - kk, i )]);
-                        _tempwyz = ( w_inner[POSITION_INDEX_X ( k + kkk, j + kk, i )] - w_inner[POSITION_INDEX_X ( k - kkk, j + kk, i )]) + (w_inner[POSITION_INDEX_X ( k - kkk, j - kk, i )] - w_inner[POSITION_INDEX_X ( k + kkk, j - kk, i )]);
+                        _tempvyz = ( v_inner[POSITION_INDEX_X ( k + kkk, j + kk, i )] + v_inner[POSITION_INDEX_X ( k - kkk, j - kk, i )] ) - ( v_inner[POSITION_INDEX_X ( k - kkk, j + kk, i )] + v_inner[POSITION_INDEX_X ( k + kkk, j - kk, i ) ] );
+                        _tempwyz = ( w_inner[POSITION_INDEX_X ( k + kkk, j + kk, i )] + w_inner[POSITION_INDEX_X ( k - kkk, j - kk, i )] ) - ( w_inner[POSITION_INDEX_X ( k - kkk, j + kk, i )] + w_inner[POSITION_INDEX_X ( k + kkk, j - kk, i ) ] );
 
-                        if(print_debug_info) DEBUG_PRINT("i %d j %d k %d kk %d kkk %d %lf %lf %lf %lf %lf %lf %lf %lf\n",i,j,k,kk,kkk,
-                            v_inner[POSITION_INDEX_X ( k + kkk, j + kk, i )] , v_inner[POSITION_INDEX_X ( k - kkk, j + kk, i )] , v_inner[POSITION_INDEX_X ( k - kkk, j - kk, i )] , v_inner[POSITION_INDEX_X ( k + kkk, j - kk, i )],
-                            w_inner[POSITION_INDEX_X ( k + kkk, j + kk, i )] , w_inner[POSITION_INDEX_X ( k - kkk, j + kk, i )] , w_inner[POSITION_INDEX_X ( k - kkk, j - kk, i )] , w_inner[POSITION_INDEX_X ( k + kkk, j - kk, i )]);
+                        // if(print_debug_info) DEBUG_PRINT("i %d j %d k %d kk %d kkk %d %lf %lf %lf %lf %lf %lf %lf %lf\n",i,j,k,kk,kkk,
+                        //     v_inner[POSITION_INDEX_X ( k + kkk, j + kk, i )] , v_inner[POSITION_INDEX_X ( k - kkk, j + kk, i )] , v_inner[POSITION_INDEX_X ( k - kkk, j - kk, i )] , v_inner[POSITION_INDEX_X ( k + kkk, j - kk, i )],
+                        //     w_inner[POSITION_INDEX_X ( k + kkk, j + kk, i )] , w_inner[POSITION_INDEX_X ( k - kkk, j + kk, i )] , w_inner[POSITION_INDEX_X ( k - kkk, j - kk, i )] , w_inner[POSITION_INDEX_X ( k + kkk, j - kk, i )]);
 
-                        _tempuxz = ( u_inner[POSITION_INDEX_X ( k + kkk, j, i + kk )] - u_inner[POSITION_INDEX_X ( k - kkk, j, i + kk )]) + (u_inner[POSITION_INDEX_X ( k - kkk, j, i - kk )] - u_inner[POSITION_INDEX_X ( k + kkk, j, i - kk )]);
-                        _tempwxz = ( w_inner[POSITION_INDEX_X ( k + kkk, j, i + kk )] - w_inner[POSITION_INDEX_X ( k - kkk, j, i + kk )]) + (w_inner[POSITION_INDEX_X ( k - kkk, j, i - kk )] - w_inner[POSITION_INDEX_X ( k + kkk, j, i - kk )]);
+                        _tempuxz = ( u_inner[POSITION_INDEX_X ( k + kkk, j, i + kk )] + u_inner[POSITION_INDEX_X ( k - kkk, j, i - kk )] ) - ( u_inner[POSITION_INDEX_X ( k - kkk, j, i + kk )] + u_inner[POSITION_INDEX_X ( k + kkk, j, i - kk )]);
+                        _tempwxz = ( w_inner[POSITION_INDEX_X ( k + kkk, j, i + kk )] + w_inner[POSITION_INDEX_X ( k - kkk, j, i - kk )] ) - ( w_inner[POSITION_INDEX_X ( k - kkk, j, i + kk )] + w_inner[POSITION_INDEX_X ( k + kkk, j, i - kk )]);
 
-                        if(print_debug_info) DEBUG_PRINT("i %d j %d k %d kk %d kkk %d %lf %lf %lf %lf %lf %lf %lf %lf\n",i,j,k,kk,kkk,
-                            u_inner[POSITION_INDEX_X ( k + kkk, j, i + kk )] , u_inner[POSITION_INDEX_X ( k - kkk, j, i + kk )] , u_inner[POSITION_INDEX_X ( k - kkk, j, i - kk )] , u_inner[POSITION_INDEX_X ( k + kkk, j, i - kk )],
-                            w_inner[POSITION_INDEX_X ( k + kkk, j, i + kk )] , w_inner[POSITION_INDEX_X ( k - kkk, j, i + kk )] , w_inner[POSITION_INDEX_X ( k - kkk, j, i - kk )] , w_inner[POSITION_INDEX_X ( k + kkk, j, i - kk )]);
+                        // if(print_debug_info) DEBUG_PRINT("i %d j %d k %d kk %d kkk %d %lf %lf %lf %lf %lf %lf %lf %lf\n",i,j,k,kk,kkk,
+                        //     u_inner[POSITION_INDEX_X ( k + kkk, j, i + kk )] , u_inner[POSITION_INDEX_X ( k - kkk, j, i + kk )] , u_inner[POSITION_INDEX_X ( k - kkk, j, i - kk )] , u_inner[POSITION_INDEX_X ( k + kkk, j, i - kk )],
+                        //     w_inner[POSITION_INDEX_X ( k + kkk, j, i + kk )] , w_inner[POSITION_INDEX_X ( k - kkk, j, i + kk )] , w_inner[POSITION_INDEX_X ( k - kkk, j, i - kk )] , w_inner[POSITION_INDEX_X ( k + kkk, j, i - kk )]);
 
 
                         tempuxz = tempuxz + ( current_c * _tempuxz );
@@ -439,26 +438,27 @@ void calc_single_slice (
                     } // for(kkk=1;kkk<=5;kkk++) end
                 } //for(kk=1;kk<5;kk++) end
 
-                if(print_debug_info) DEBUG_PRINT("i %d j %d k %d tempuxz %.12lf tempwxz %.12lf tempvyz %.12lf tempwyz %.12lf tempuxy %.12lf tempvxy %.12lf \n",i,j,k,tempuxz , tempwxz , tempvyz , tempwyz , tempuxy , tempvxy);
+                //if(print_debug_info) DEBUG_PRINT("i %d j %d k %d tempuxz %.12lf tempwxz %.12lf tempvyz %.12lf tempwyz %.12lf tempuxy %.12lf tempvxy %.12lf \n",i,j,k,tempuxz , tempwxz , tempvyz , tempwyz , tempuxy , tempvxy);
 
 #ifdef __MIC__
 //                        if(tempuxz - 0.0 > 1e-6)
 //                            for(int qq = 0;qq<1;qq++) printf("i %d j %d k %d tempuxz %lf tempwxz %lf tempvyz %lf tempwyz %lf tempuxy %lf tempvxy %lf\n",i,j,k,_tempuxz , _tempwxz , _tempvyz , _tempwyz , _tempuxy , _tempvxy);
 //                printf("nIndex %d\n",nIndex);
 #endif
-                up_inner[nIndex] = tempux2 + tempvxy * vvp2_dtz_dtx                                       + tempwxz * vvp2_dtz_dtx;
-                vp_inner[nIndex] = tempuxy * vvp2_dtz_dtx             + tempvy2 + tempwyz * vvp2_dtz_dtx  ;
-                wp_inner[nIndex] = px * wave[l_inner - 1]                       + tempvyz * vvp2_dtz_dtx            + tempwz2 + tempuxz * vvp2_dtz_dtx;
 
-                us_inner[nIndex] = - tempvxy * vvs2_dtz_dtx           + tempuy2                           + tempuz2 - tempwxz * vvs2_dtz_dtx;;
-                vs_inner[nIndex] = tempvx2 - tempuxy * vvs2_dtz_dtx   - tempwyz * vvs2_dtz_dtx            + tempvz2;
-                ws_inner[nIndex] = tempwx2                            + tempwy2 - tempvyz * vvs2_dtz_dtx  - tempuxz * vvs2_dtz_dtx;
+                up_inner[POSITION_INDEX_X ( k, j, i )] = (tempux2 + tempvxy * vvp2_dtz_dtx)                                          + ( tempwxz * vvp2_dtz_dtx);
+                vp_inner[POSITION_INDEX_X ( k, j, i )] = (tempuxy * vvp2_dtz_dtx          )  + ( tempvy2 + tempwyz * vvp2_dtz_dtx  );
+                wp_inner[POSITION_INDEX_X ( k, j, i )] = (px * wave[l_inner - 1]          )  + ( tempvyz * vvp2_dtz_dtx    )         + ( tempwz2 + tempuxz * vvp2_dtz_dtx);
+
+                us_inner[POSITION_INDEX_X ( k, j, i )] = (- tempvxy * vvs2_dtz_dtx        )  + ( tempuy2                           ) + ( tempuz2 - tempwxz * vvs2_dtz_dtx);
+                vs_inner[POSITION_INDEX_X ( k, j, i )] = (tempvx2 - tempuxy * vvs2_dtz_dtx)  - (tempwyz * vvs2_dtz_dtx             ) + ( tempvz2 );
+                ws_inner[POSITION_INDEX_X ( k, j, i )] = (tempwx2                         )  + (tempwy2 - tempvyz * vvs2_dtz_dtx   ) - ( tempuxz * vvs2_dtz_dtx );
                 // //Debug
                 // if(i-5+nleft==ncx_shot_inner-1&&j-5+nfront==ncy_shot_inner-1&&k-5+ntop==ncz_shot-1)
                 //  printf("[X]%lf wave:%lf px:%lf should be %lf\n", wp_inner[nIndex],wave[l_inner-1],px,wave[l_inner-1]*px);
 
-                if(print_debug_info) DEBUG_PRINT("i %d j %d k %d up_inner %.12lf vp_inner %.12lf wp_inner %.12lf us_inner %.12lf vs_inner %.12lf ws_inner %.12lf\n",i,j,k,up_inner[nIndex] , vp_inner[nIndex] , wp_inner[nIndex] , us_inner[nIndex] , vs_inner[nIndex] , ws_inner[nIndex]);
-            }
+                //if(print_debug_info) DEBUG_PRINT("i %d j %d k %d up_inner %.12lf vp_inner %.12lf wp_inner %.12lf us_inner %.12lf vs_inner %.12lf ws_inner %.12lf\n",i,j,k,up_inner[nIndex] , vp_inner[nIndex] , wp_inner[nIndex] , us_inner[nIndex] , vs_inner[nIndex] , ws_inner[nIndex]);
+           }
         }
 }
 
@@ -473,10 +473,29 @@ void calc_single_l (
         int ncy_shot_inner,int ncx_shot_inner,double c0_inner ,double dtx_inner,double dtz_inner
         ) {
 
-    bool print_debug_info = nMicMaxXLength >= 90;
+    bool print_debug_info = (nMicMaxXLength >= USE_MIC_MAX_LENGTH_THRESHOLD && k_begin == 5);
 
 	int n_slice_on_each_core = (k_end - k_begin) / omp_get_num_procs();
 	int k = k_begin;
+
+    for ( int j = j_begin; j < j_end; j++ )
+        for ( int i = i_begin; i < i_end; i++ ) {
+            int nIndex              = POSITION_INDEX_X ( 5, j, i );
+
+            if(nMicMaxXLength >= USE_MIC_MAX_LENGTH_THRESHOLD && k_begin <= 5)
+                DEBUG_PRINT("Before i %d j %d k %d u_inner %.12lf v_inner %.12lf w_inner %.12lf u_inner %.12lf v_inner %.12lf w_inner %.12lf\n up_inner %.12lf vp_inner %.12lf wp_inner %.12lf us_inner %.12lf vs_inner %.12lf ws_inner %.12lf\nup_inner1 %.12lf vp_inner1 %.12lf wp_inner1 %.12lf us_inner1 %.12lf vs_inner1 %.12lf ws_inner1 %.12lf\nup_inner2 %.12lf vp_inner2 %.12lf wp_inner2 %.12lf us_inner2 %.12lf vs_inner2 %.12lf ws_inner2 %.12lf\n",
+                    i,j,5,
+                    u_inner[nIndex] , v_inner[nIndex] , w_inner[nIndex] , u_inner[nIndex] , v_inner[nIndex] , w_inner[nIndex],
+                    up_inner[nIndex] , vp_inner[nIndex] , wp_inner[nIndex] , us_inner[nIndex] , vs_inner[nIndex] , ws_inner[nIndex],
+                    up_inner1[nIndex] , vp_inner1[nIndex] , wp_inner1[nIndex] , us_inner1[nIndex] , vs_inner1[nIndex] , ws_inner1[nIndex],
+                    up_inner2[nIndex] , vp_inner2[nIndex] , wp_inner2[nIndex] , us_inner2[nIndex] , vs_inner2[nIndex] , ws_inner2[nIndex]
+                    );
+
+            // if(i-5+nleft==ncx_shot_inner-1&&j-5+nfront==ncy_shot_inner-1&&k-5+ntop==ncz_shot-1)
+            //  printf("[Final]%lf\n", w_x[nIndex]);
+        }//for(i=nleft;i<nright;i++) end
+//                              for(int qq=0;qq<1000;qq++){printf("%p\n",u_inner);}
+
 
     if(n_slice_on_each_core >= USE_OMP_MAX_LENGTH_THRESHOLD){
         #pragma omp parallel for private(k)
@@ -505,37 +524,46 @@ void calc_single_l (
                     ncy_shot_inner,ncx_shot_inner,c0_inner ,dtx_inner,dtz_inner
                 );
 
+//    if(print_debug_info) DEBUG_PRINT("i %d j %d k %d u_inner %p v_inner %p wp_inner %p us_inner %p vs_inner %p ws_inner %p\n",i,j,k,u_inner , v_inner , w_inner , u_inner , v_inner , w_inner);
+
+
     for ( int k = k_begin; k < k_end; k++ )
         for ( int j = j_begin; j < j_end; j++ )
             for ( int i = i_begin; i < i_end; i++ ) {
                 int nIndex              = POSITION_INDEX_X ( k, j, i );
 
-                up_inner[nIndex] += 2 * up_inner1[nIndex] - up_inner2[nIndex];
-                vp_inner[nIndex] += 2 * vp_inner1[nIndex] - vp_inner2[nIndex];
-                wp_inner[nIndex] += 2 * wp_inner1[nIndex] - wp_inner2[nIndex];
-                us_inner[nIndex] += 2 * us_inner1[nIndex] - us_inner2[nIndex];
-                vs_inner[nIndex] += 2 * vs_inner1[nIndex] - vs_inner2[nIndex];
-                ws_inner[nIndex] += 2 * ws_inner1[nIndex] - ws_inner2[nIndex];
+                up_inner[nIndex] += ( 2 * up_inner1[nIndex] - up_inner2[nIndex] );
+                vp_inner[nIndex] += ( 2 * vp_inner1[nIndex] - vp_inner2[nIndex] );
+                wp_inner[nIndex] += ( 2 * wp_inner1[nIndex] - wp_inner2[nIndex] );
+                us_inner[nIndex] += ( 2 * us_inner1[nIndex] - us_inner2[nIndex] );
+                vs_inner[nIndex] += ( 2 * vs_inner1[nIndex] - vs_inner2[nIndex] );
+                ws_inner[nIndex] += ( 2 * ws_inner1[nIndex] - ws_inner2[nIndex] );
                 // if(i-5+nleft==ncx_shot_inner-1&&j-5+nfront==ncy_shot_inner-1&&k-5+ntop==ncz_shot-1)
                 //  printf("[Final]%lf\n", wp_inner[nIndex]);
                 u_inner[nIndex] = up_inner[nIndex] + us_inner[nIndex];
                 v_inner[nIndex] = vp_inner[nIndex] + vs_inner[nIndex];
                 w_inner[nIndex] = wp_inner[nIndex] + ws_inner[nIndex];
 
+                if(nMicMaxXLength >= USE_MIC_MAX_LENGTH_THRESHOLD && k == 5)
+                    DEBUG_PRINT("After i %d j %d k %d up_inner %.12lf vp_inner %.12lf wp_inner %.12lf us_inner %.12lf vs_inner %.12lf ws_inner %.12lf\nup_inner1 %.12lf vp_inner1 %.12lf wp_inner1 %.12lf us_inner1 %.12lf vs_inner1 %.12lf ws_inner1 %.12lf\nup_inner2 %.12lf vp_inner2 %.12lf wp_inner2 %.12lf us_inner2 %.12lf vs_inner2 %.12lf ws_inner2 %.12lf\n",
+                        i,j,k,
+                        up_inner[nIndex] , vp_inner[nIndex] , wp_inner[nIndex] , us_inner[nIndex] , vs_inner[nIndex] , ws_inner[nIndex],
+                        up_inner1[nIndex] , vp_inner1[nIndex] , wp_inner1[nIndex] , us_inner1[nIndex] , vs_inner1[nIndex] , ws_inner1[nIndex],
+                        up_inner2[nIndex] , vp_inner2[nIndex] , wp_inner2[nIndex] , us_inner2[nIndex] , vs_inner2[nIndex] , ws_inner2[nIndex]
+                        );
+
                 // if(i-5+nleft==ncx_shot_inner-1&&j-5+nfront==ncy_shot_inner-1&&k-5+ntop==ncz_shot-1)
                 //  printf("[Final]%lf\n", w_x[nIndex]);
             }//for(i=nleft;i<nright;i++) end
-#ifdef __MIC__
 //                              for(int qq=0;qq<1000;qq++){printf("%p\n",u_inner);}
 
-    double sum_up_inner = get_sum(us_inner2,nMicMaxXLength,nMicMaxYLength,i_begin, i_end, j_begin, j_end, k_begin, k_end);
-    double sum_vp = get_sum(vs_inner2,nMicMaxXLength,nMicMaxYLength,i_begin, i_end, j_begin, j_end, k_begin, k_end);
-    double sum_wp = get_sum(ws_inner2,nMicMaxXLength,nMicMaxYLength,i_begin, i_end, j_begin, j_end, k_begin, k_end);
-//    for(int qq = 0;qq<10;qq++)printf("sum of u_inner:%lf v_inner:%lf w_inner:%lf\n",sum_up_inner,sum_vp,sum_wp);
-#endif
-
+    // double sum_up = get_sum(us_inner2,nMicMaxXLength,nMicMaxYLength,i_begin, i_end, j_begin, j_end, k_begin, k_end);
+    // double sum_vp = get_sum(vs_inner2,nMicMaxXLength,nMicMaxYLength,i_begin, i_end, j_begin, j_end, k_begin, k_end);
+    // double sum_wp = get_sum(ws_inner2,nMicMaxXLength,nMicMaxYLength,i_begin, i_end, j_begin, j_end, k_begin, k_end);
+    // if(print_debug_info) DEBUG_PRINT("sum of u_inner:%lf v_inner:%lf w_inner:%lf\n",sum_up,sum_vp,sum_wp);
 
     // printf("Start waiting....%d\n",l_inner);
+
 }
 // void seperate_to_work_l()
 // {
@@ -680,29 +708,28 @@ void calc_shot (
     double * debug_mic_ws1 = (double *)malloc(sizeof(double) * (mic_z_length + 10) * mic_slice_size ) ;
     double * debug_mic_ws2 = (double *)malloc(sizeof(double) * (mic_z_length + 10) * mic_slice_size ) ;
 
-
     mic_u = &u[POSITION_INDEX_X (k_mic_begin - 5,0, 0 )];
     mic_v = &v[POSITION_INDEX_X (k_mic_begin - 5,0, 0 )];
     mic_w = &w[POSITION_INDEX_X (k_mic_begin - 5,0, 0 )];
 
-    double * mic_up  = &up [POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-    double * mic_up1 = &up1[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-    double * mic_up2 = &up2[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-    double * mic_vp  = &vp [POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-    double * mic_vp1 = &vp1[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-    double * mic_vp2 = &vp2[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-    double * mic_wp  = &wp [POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-    double * mic_wp1 = &wp1[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-    double * mic_wp2 = &wp2[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-    double * mic_us  = &us [POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-    double * mic_us1 = &us1[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-    double * mic_us2 = &us2[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-    double * mic_vs  = &vs [POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-    double * mic_vs1 = &vs1[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-    double * mic_vs2 = &vs2[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-    double * mic_ws  = &ws [POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-    double * mic_ws1 = &ws1[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-    double * mic_ws2 = &ws2[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
+    double * mic_up  ;
+    double * mic_up1 ;
+    double * mic_up2 ;
+    double * mic_vp  ;
+    double * mic_vp1 ;
+    double * mic_vp2 ;
+    double * mic_wp  ;
+    double * mic_wp1 ;
+    double * mic_wp2 ;
+    double * mic_us  ;
+    double * mic_us1 ;
+    double * mic_us2 ;
+    double * mic_vs  ;
+    double * mic_vs1 ;
+    double * mic_vs2 ;
+    double * mic_ws  ;
+    double * mic_ws1 ;
+    double * mic_ws2 ;
 
     for ( int l = lStart; l <= lEnd; l++ ) {
         xmax = l * dt * velmax;
@@ -753,7 +780,7 @@ void calc_shot (
 //         }
 //         */
 //         calc_single_l ( i_begin, i_end, j_begin, j_end, 5 + n_mic_top - ntop, n_mic_top - ntop + nMicZLength + 5,
-//                 debug_up  , debug_up1 , debug_up2 , debug_vp  , debug_vp1 ,
+//                 debug_up  , debug_  , debug_up2 , debug_vp  , debug_vp1 ,
 //                 debug_vp2 , debug_wp  , debug_wp1 , debug_wp2 , debug_us  ,
 //                 debug_us1 , debug_us2 , debug_vs  , debug_vs1 , debug_vs2 ,
 //                 debug_ws  , debug_ws1 , debug_ws2 , debug_u   , debug_v   , debug_w,
@@ -821,6 +848,25 @@ void calc_shot (
             //			DEBUG_ASSERT(k_mic_begin>)
             //           	__SHOW__(copy_length)
 
+            mic_up  = &up [POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
+            mic_up1 = &up1[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
+            mic_up2 = &up2[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
+            mic_vp  = &vp [POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
+            mic_vp1 = &vp1[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
+            mic_vp2 = &vp2[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
+            mic_wp  = &wp [POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
+            mic_wp1 = &wp1[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
+            mic_wp2 = &wp2[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
+            mic_us  = &us [POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
+            mic_us1 = &us1[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
+            mic_us2 = &us2[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
+            mic_vs  = &vs [POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
+            mic_vs1 = &vs1[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
+            mic_vs2 = &vs2[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
+            mic_ws  = &ws [POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
+            mic_ws1 = &ws1[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
+            mic_ws2 = &ws2[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
+
             if (!init_mic_flag) {
 
                 init_mic_flag = true;
@@ -861,12 +907,8 @@ void calc_shot (
     			memcpy(debug_mic_ws1,&ws1[POSITION_INDEX_X (k_mic_begin - 5, 0,0)],sizeof(double)*copy_length ) ;
     			memcpy(debug_mic_ws2,&ws2[POSITION_INDEX_X (k_mic_begin - 5, 0,0)],sizeof(double)*copy_length ) ;
 
-
 //printf("Hit here...");
 #pragma offload_transfer target(mic:0)\
-                in(mic_u  :length(copy_length) MIC_ALLOC)\
-                in(mic_v  :length(copy_length) MIC_ALLOC)\
-                in(mic_w  :length(copy_length) MIC_ALLOC)\
                 in(mic_up :length(copy_length) MIC_ALLOC)\
                 in(mic_up1:length(copy_length) MIC_ALLOC)\
                 in(mic_up2:length(copy_length) MIC_ALLOC)\
@@ -887,6 +929,9 @@ void calc_shot (
                 in(mic_ws2:length(copy_length) MIC_ALLOC)\
                 in(wave   :length(lt) MIC_ALLOC) \
                 in(c: MIC_ALLOC)\
+                in(mic_w  :length(copy_length) MIC_ALLOC)\
+                in(mic_v  :length(copy_length) MIC_ALLOC)\
+                in(mic_u  :length(copy_length) MIC_ALLOC)\
                 nocopy ( mic_exchange_part_u: length ( 5 * mic_slice_size ) MIC_ALLOC )\
                 nocopy ( mic_exchange_part_v: length ( 5 * mic_slice_size ) MIC_ALLOC )\
                 nocopy ( mic_exchange_part_w: length ( 5 * mic_slice_size ) MIC_ALLOC )\
@@ -907,17 +952,16 @@ void calc_shot (
 //                 in(mic_w  :length(copy_length) MIC_REUSE)\
 //                 signal(mic_u)
 
-
                 memcpy(mic_exchange_part_u  ,&u  [POSITION_INDEX_X (k_mic_begin - 5, 0,0)],sizeof(double)*mic_slice_size * ( 5 ) ) ;
                 memcpy(mic_exchange_part_v  ,&v  [POSITION_INDEX_X (k_mic_begin - 5, 0,0)],sizeof(double)*mic_slice_size * ( 5 ) ) ;
                 memcpy(mic_exchange_part_w  ,&w  [POSITION_INDEX_X (k_mic_begin - 5, 0,0)],sizeof(double)*mic_slice_size * ( 5 ) ) ;
                 #pragma offload target(mic:0) \
-                    nocopy(mic_u  : MIC_REUSE)\
-                    nocopy(mic_v  : MIC_REUSE)\
-                    nocopy(mic_w  : MIC_REUSE)\
                     in(mic_exchange_part_u:length(5*mic_slice_size) MIC_REUSE)\
                     in(mic_exchange_part_v:length(5*mic_slice_size) MIC_REUSE)\
                     in(mic_exchange_part_w:length(5*mic_slice_size) MIC_REUSE)\
+                    nocopy(mic_v  : MIC_REUSE)\
+                    nocopy(mic_w  : MIC_REUSE)\
+                    nocopy(mic_u  : MIC_REUSE)\
                     signal(mic_u)
                     {
                         memcpy(mic_u  ,mic_exchange_part_u,sizeof(double)*5*mic_slice_size_shaddow ) ;
@@ -972,13 +1016,13 @@ void calc_shot (
                 memcpy ( mic_exchange_part_v, &(mic_v[POSITION_INDEX_X(5,0,0)]), sizeof ( double ) * 5 * mic_slice_size_shaddow );
                 memcpy ( mic_exchange_part_w, &(mic_w[POSITION_INDEX_X(5,0,0)]), sizeof ( double ) * 5 * mic_slice_size_shaddow );
 
-                double *swap_temp_mic;
-                swap_temp_mic = mic_up2; mic_up2 = mic_up1; mic_up1 = mic_up; mic_up = swap_temp_mic;
-                swap_temp_mic = mic_vp2; mic_vp2 = mic_vp1; mic_vp1 = mic_vp; mic_vp = swap_temp_mic;
-                swap_temp_mic = mic_wp2; mic_wp2 = mic_wp1; mic_wp1 = mic_wp; mic_wp = swap_temp_mic;
-                swap_temp_mic = mic_us2; mic_us2 = mic_us1; mic_us1 = mic_us; mic_us = swap_temp_mic;
-                swap_temp_mic = mic_vs2; mic_vs2 = mic_vs1; mic_vs1 = mic_vs; mic_vs = swap_temp_mic;
-                swap_temp_mic = mic_ws2; mic_ws2 = mic_ws1; mic_ws1 = mic_ws; mic_ws = swap_temp_mic;
+                double *mic_swap_temp;
+                mic_swap_temp = mic_up2; mic_up2 = mic_up1; mic_up1 = mic_up; mic_up = mic_swap_temp;
+                mic_swap_temp = mic_vp2; mic_vp2 = mic_vp1; mic_vp1 = mic_vp; mic_vp = mic_swap_temp;
+                mic_swap_temp = mic_wp2; mic_wp2 = mic_wp1; mic_wp1 = mic_wp; mic_wp = mic_swap_temp;
+                mic_swap_temp = mic_us2; mic_us2 = mic_us1; mic_us1 = mic_us; mic_us = mic_swap_temp;
+                mic_swap_temp = mic_vs2; mic_vs2 = mic_vs1; mic_vs1 = mic_vs; mic_vs = mic_swap_temp;
+                mic_swap_temp = mic_ws2; mic_ws2 = mic_ws1; mic_ws1 = mic_ws; mic_ws = mic_swap_temp;
             }
 
 /////////////////DEBUG
@@ -1032,9 +1076,9 @@ void calc_shot (
             memcpy ( &(v[POSITION_INDEX_X(k_mic_begin,0,0)]), mic_exchange_part_v, sizeof ( double )* 5 * mic_slice_size );
             memcpy ( &(w[POSITION_INDEX_X(k_mic_begin,0,0)]), mic_exchange_part_w, sizeof ( double )* 5 * mic_slice_size );
 
-    double sum_up = get_sum(debug_us2,nMicMaxXLength,nMicMaxYLength,i_begin, i_end, j_begin, j_end,k_mic_begin, k_mic_end - cpu_z_length);
-    double sum_vp = get_sum(debug_vs2,nMicMaxXLength,nMicMaxYLength,i_begin, i_end, j_begin, j_end,k_mic_begin, k_mic_end - cpu_z_length);
-    double sum_wp = get_sum(debug_ws2,nMicMaxXLength,nMicMaxYLength,i_begin, i_end, j_begin, j_end,k_mic_begin, k_mic_end - cpu_z_length);
+    // double sum_up = get_sum(debug_us2,nMicMaxXLength,nMicMaxYLength,i_begin, i_end, j_begin, j_end,k_mic_begin, k_mic_end - cpu_z_length);
+    // double sum_vp = get_sum(debug_vs2,nMicMaxXLength,nMicMaxYLength,i_begin, i_end, j_begin, j_end,k_mic_begin, k_mic_end - cpu_z_length);
+    // double sum_wp = get_sum(debug_ws2,nMicMaxXLength,nMicMaxYLength,i_begin, i_end, j_begin, j_end,k_mic_begin, k_mic_end - cpu_z_length);
 //    for(int qq = 0;qq<10;qq++)printf("cpu sum of u:%lf v:%lf w:%lf\n",sum_up,sum_vp,sum_wp);
 
 
@@ -1107,7 +1151,7 @@ void calc_shot (
         nocopy(mic_exchange_part_u:length(5*mic_slice_size) MIC_FREE)\
         nocopy(mic_exchange_part_v:length(5*mic_slice_size) MIC_FREE)\
         nocopy(mic_exchange_part_w:length(5*mic_slice_size) MIC_FREE)\
-        nocopy(mic_u :length(copy_length) MIC_FREE)\
+        nocopy(mic_u  :length(copy_length) MIC_FREE)\
         nocopy(mic_v  :length(copy_length) MIC_FREE)\
         nocopy(mic_w  :length(copy_length) MIC_FREE)\
         nocopy(mic_up2:length(copy_length) MIC_FREE)\
