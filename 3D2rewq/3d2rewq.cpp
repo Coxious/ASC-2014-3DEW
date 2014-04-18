@@ -23,8 +23,8 @@
 // #	define	CORE_NUM 8
 // #endif
 
-#define USE_MIC_MAX_LENGTH_THRESHOLD 	90
-#define USE_OMP_MAX_LENGTH_THRESHOLD    1000
+#define USE_MIC_MAX_LENGTH_THRESHOLD 	100
+#define USE_OMP_MAX_LENGTH_THRESHOLD    50
 
 #define MIC_CPU_RATE	0.6
 
@@ -432,21 +432,6 @@ void calc_single_l (
 	int n_slice_on_each_core = (k_end - k_begin) / omp_get_num_procs();
 	int k = k_begin;
 
-    for ( int j = j_begin; j < j_end; j++ )
-        for ( int i = i_begin; i < i_end; i++ ) {
-            int nIndex              = POSITION_INDEX_X ( 5, j, i );
-
-            // if(nMicMaxXLength >= USE_MIC_MAX_LENGTH_THRESHOLD && k_begin <= 5)
-                // DEBUG_PRINT("Before i %d j %d k %d u_inner %.12lf v_inner %.12lf w_inner %.12lf u_inner %.12lf v_inner %.12lf w_inner %.12lf\n up_inner %.12lf vp_inner %.12lf wp_inner %.12lf us_inner %.12lf vs_inner %.12lf ws_inner %.12lf\nup_inner1 %.12lf vp_inner1 %.12lf wp_inner1 %.12lf us_inner1 %.12lf vs_inner1 %.12lf ws_inner1 %.12lf\nup_inner2 %.12lf vp_inner2 %.12lf wp_inner2 %.12lf us_inner2 %.12lf vs_inner2 %.12lf ws_inner2 %.12lf\n",
-                    // i,j,5,
-                    // u_inner[nIndex] , v_inner[nIndex] , w_inner[nIndex] , u_inner[nIndex] , v_inner[nIndex] , w_inner[nIndex],
-                    // up_inner[nIndex] , vp_inner[nIndex] , wp_inner[nIndex] , us_inner[nIndex] , vs_inner[nIndex] , ws_inner[nIndex],
-                    // up_inner1[nIndex] , vp_inner1[nIndex] , wp_inner1[nIndex] , us_inner1[nIndex] , vs_inner1[nIndex] , ws_inner1[nIndex],
-                    // up_inner2[nIndex] , vp_inner2[nIndex] , wp_inner2[nIndex] , us_inner2[nIndex] , vs_inner2[nIndex] , ws_inner2[nIndex]
-                    // );
-
-        }//for(i=nleft;i<nright;i++) end
-
     if(n_slice_on_each_core >= USE_OMP_MAX_LENGTH_THRESHOLD){
         #pragma omp parallel for private(k)
         for ( ; k < k_end; k+= n_slice_on_each_core ) {
@@ -488,14 +473,6 @@ void calc_single_l (
                 u_inner[nIndex] = up_inner[nIndex] + us_inner[nIndex];
                 v_inner[nIndex] = vp_inner[nIndex] + vs_inner[nIndex];
                 w_inner[nIndex] = wp_inner[nIndex] + ws_inner[nIndex];
-
-                // if(nMicMaxXLength >= USE_MIC_MAX_LENGTH_THRESHOLD && k == 5)
-                    // DEBUG_PRINT("After i %d j %d k %d up_inner %.12lf vp_inner %.12lf wp_inner %.12lf us_inner %.12lf vs_inner %.12lf ws_inner %.12lf\nup_inner1 %.12lf vp_inner1 %.12lf wp_inner1 %.12lf us_inner1 %.12lf vs_inner1 %.12lf ws_inner1 %.12lf\nup_inner2 %.12lf vp_inner2 %.12lf wp_inner2 %.12lf us_inner2 %.12lf vs_inner2 %.12lf ws_inner2 %.12lf\n",
-                        // i,j,k,
-                        // up_inner[nIndex] , vp_inner[nIndex] , wp_inner[nIndex] , us_inner[nIndex] , vs_inner[nIndex] , ws_inner[nIndex],
-                        // up_inner1[nIndex] , vp_inner1[nIndex] , wp_inner1[nIndex] , us_inner1[nIndex] , vs_inner1[nIndex] , ws_inner1[nIndex],
-                        // up_inner2[nIndex] , vp_inner2[nIndex] , wp_inner2[nIndex] , us_inner2[nIndex] , vs_inner2[nIndex] , ws_inner2[nIndex]
-                        // );
 
             }//for(i=nleft;i<nright;i++) end
 
@@ -577,8 +554,6 @@ void calc_shot (
     nMicMaxXLength = nright  - nleft;
     nMicMaxYLength = nback   - nfront;
     nMicMaxZLength = nbottom - ntop;
-
-    // printf("MAX_X: %d, MAX_Y: %d, MAX_Z: %d", nMicMaxXLength, nMicMaxYLength, nMicMaxZLength);
 
     memset ( u  , 0, sizeof ( double ) *mic_used_size );
     memset ( v  , 0, sizeof ( double ) *mic_used_size );
@@ -726,6 +701,8 @@ void calc_shot (
             mic_ws2 = &ws2[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
 
             if (!init_mic_flag) {
+
+                init_mic_flag = true;
 
                 copy_length = mic_slice_size * ( mic_z_length+10 );
 #ifdef SHOW_NORMAL_OUTPUT
