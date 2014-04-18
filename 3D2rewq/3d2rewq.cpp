@@ -23,7 +23,7 @@
 // #	define	CORE_NUM 8
 // #endif
 
-#define USE_MIC_MAX_LENGTH_THRESHOLD 	100
+#define USE_MIC_MAX_LENGTH_THRESHOLD 	90
 #define USE_OMP_MAX_LENGTH_THRESHOLD    50
 
 #define MIC_CPU_RATE	0.6
@@ -742,22 +742,11 @@ void calc_shot (
 
                 copy_length = mic_slice_size * ( 5 );
 
-                memcpy(mic_exchange_part_u  ,&u  [POSITION_INDEX_X (k_mic_begin - 5, 0,0)],sizeof(double)*mic_slice_size * ( 5 ) ) ;
-                memcpy(mic_exchange_part_v  ,&v  [POSITION_INDEX_X (k_mic_begin - 5, 0,0)],sizeof(double)*mic_slice_size * ( 5 ) ) ;
-                memcpy(mic_exchange_part_w  ,&w  [POSITION_INDEX_X (k_mic_begin - 5, 0,0)],sizeof(double)*mic_slice_size * ( 5 ) ) ;
-                #pragma offload target(mic:0) \
-                    in(mic_exchange_part_u:length(5*mic_slice_size) MIC_REUSE)\
-                    in(mic_exchange_part_v:length(5*mic_slice_size) MIC_REUSE)\
-                    in(mic_exchange_part_w:length(5*mic_slice_size) MIC_REUSE)\
-                    nocopy(mic_v  : MIC_REUSE)\
-                    nocopy(mic_w  : MIC_REUSE)\
-                    nocopy(mic_u  : MIC_REUSE)\
+                #pragma offload_transfer target(mic:0) \
+                    in(mic_v:length(5*mic_slice_size) MIC_REUSE)\
+                    in(mic_w:length(5*mic_slice_size) MIC_REUSE)\
+                    in(mic_u:length(5*mic_slice_size) MIC_REUSE)\
                     signal(mic_u)
-                    {
-                        memcpy(mic_u  ,mic_exchange_part_u,sizeof(double)*5*mic_slice_size_shaddow ) ;
-                        memcpy(mic_v  ,mic_exchange_part_v,sizeof(double)*5*mic_slice_size_shaddow ) ;
-                        memcpy(mic_w  ,mic_exchange_part_w,sizeof(double)*5*mic_slice_size_shaddow ) ;
-                    }
             }
 
 #pragma offload target(mic:0) \
