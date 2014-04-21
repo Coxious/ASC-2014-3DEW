@@ -539,9 +539,9 @@ void calc_single_l_offload_to_mic(
             in(mic_ws2:length(mic_slice_size * ( mic_z_length+10)) MIC_ALLOC)\
             in(wave   :length(lt) MIC_ALLOC) \
             in(c: MIC_ALLOC)\
-            in(mic_w  :length(mic_z_length+10) MIC_ALLOC)\
-            in(mic_v  :length(mic_z_length+10) MIC_ALLOC)\
-            in(mic_u  :length(mic_z_length+10) MIC_ALLOC)\
+            in(mic_w  :length(mic_slice_size * (mic_z_length+10)) MIC_ALLOC)\
+            in(mic_v  :length(mic_slice_size * (mic_z_length+10)) MIC_ALLOC)\
+            in(mic_u  :length(mic_slice_size * (mic_z_length+10)) MIC_ALLOC)\
             in( mic_exchange_part_front_in_u: length ( 5 * mic_slice_size ) MIC_ALLOC )\
             in( mic_exchange_part_front_in_v: length ( 5 * mic_slice_size ) MIC_ALLOC )\
             in( mic_exchange_part_front_in_w: length ( 5 * mic_slice_size ) MIC_ALLOC )\
@@ -752,6 +752,12 @@ void calc_shot (
 
     double * mic_exchange_part_w[MIC_COUNT+1][2];
 
+    mic_z_length = MIC_CPU_RATE * nMicMaxZLength;
+
+    int cpu_z_length = nMicMaxZLength - mic_z_length;
+
+    k_mic_begin =5+cpu_z_length;
+
     mic_u = &u[POSITION_INDEX_X (k_mic_begin - 5,0, 0 )];
     mic_v = &v[POSITION_INDEX_X (k_mic_begin - 5,0, 0 )];
     mic_w = &w[POSITION_INDEX_X (k_mic_begin - 5,0, 0 )];
@@ -764,12 +770,6 @@ void calc_shot (
         mic_exchange_part_w[i][0] = ( double * ) calloc ( mic_slice_size * 5 , sizeof ( double ));
         mic_exchange_part_w[i][1] = ( double * ) calloc ( mic_slice_size * 5 , sizeof ( double ));
     }
-
-    mic_z_length = MIC_CPU_RATE * nMicMaxZLength;
-
-    int cpu_z_length = nMicMaxZLength - mic_z_length;
-
-    k_mic_begin =5+cpu_z_length;
 
     double * mic_up  ;
     double * mic_up1 ;
