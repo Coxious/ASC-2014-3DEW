@@ -23,7 +23,7 @@
 // #    define  CORE_NUM 8
 // #endif
 
-#define USE_MIC_MAX_LENGTH_THRESHOLD    90
+#define USE_MIC_MAX_LENGTH_THRESHOLD    91
 
 #ifdef __MIC__
 
@@ -502,10 +502,6 @@ void calc_single_l_offload_to_mic(
 {
     double copy_length;
 
-    printf("%d nMicMaxXLength, %d nMicMaxYLength, %d ntop, %d nleft, %d nfront, %d ncz_shot_new, %d l_inner,%d ncy_shot_inner,%d ncx_shot_inner,%lf c0_inner ,%lf dtx_inner,%lf dtz_inner , %d mic_device_id,%d n_start_z_position, %d mic_slice_size\n", nMicMaxXLength,  nMicMaxYLength,  ntop,  nleft,  nfront,  ncz_shot_new,  l_inner,
-         ncy_shot_inner, ncx_shot_inner, c0_inner , dtx_inner, dtz_inner ,  mic_device_id,
-         n_start_z_position,  mic_slice_size);
-
     // double * mic_exchange_part_front_u = mic_exchange_part_front_in_u;
     // double * mic_exchange_part_front_v = mic_exchange_part_front_in_v;
     // double * mic_exchange_part_front_w = mic_exchange_part_front_in_w;
@@ -546,35 +542,47 @@ void calc_single_l_offload_to_mic(
             in(mic_w  :length(mic_z_length+10) MIC_ALLOC)\
             in(mic_v  :length(mic_z_length+10) MIC_ALLOC)\
             in(mic_u  :length(mic_z_length+10) MIC_ALLOC)\
-            in( mic_exchange_part_front_u: length ( 5 * mic_slice_size ) MIC_ALLOC )\
-            in( mic_exchange_part_front_v: length ( 5 * mic_slice_size ) MIC_ALLOC )\
-            in( mic_exchange_part_front_w: length ( 5 * mic_slice_size ) MIC_ALLOC )\
-            in( mic_exchange_part_back_u : length ( 5 * mic_slice_size ) MIC_ALLOC )\
-            in( mic_exchange_part_back_v : length ( 5 * mic_slice_size ) MIC_ALLOC )\
-            in( mic_exchange_part_back_w : length ( 5 * mic_slice_size ) MIC_ALLOC )\
-            signal ( mic_exchange_part_back_w )
+            in( mic_exchange_part_front_in_u: length ( 5 * mic_slice_size ) MIC_ALLOC )\
+            in( mic_exchange_part_front_in_v: length ( 5 * mic_slice_size ) MIC_ALLOC )\
+            in( mic_exchange_part_front_in_w: length ( 5 * mic_slice_size ) MIC_ALLOC )\
+            in( mic_exchange_part_back_in_u : length ( 5 * mic_slice_size ) MIC_ALLOC )\
+            in( mic_exchange_part_back_in_v : length ( 5 * mic_slice_size ) MIC_ALLOC )\
+            in( mic_exchange_part_back_in_w : length ( 5 * mic_slice_size ) MIC_ALLOC )\
+            nocopy( mic_exchange_part_front_out_u: length ( 5 * mic_slice_size ) MIC_ALLOC )\
+            nocopy( mic_exchange_part_front_out_v: length ( 5 * mic_slice_size ) MIC_ALLOC )\
+            nocopy( mic_exchange_part_front_out_w: length ( 5 * mic_slice_size ) MIC_ALLOC )\
+            nocopy( mic_exchange_part_back_out_u : length ( 5 * mic_slice_size ) MIC_ALLOC )\
+            nocopy( mic_exchange_part_back_out_v : length ( 5 * mic_slice_size ) MIC_ALLOC )\
+            nocopy( mic_exchange_part_back_out_w : length ( 5 * mic_slice_size ) MIC_ALLOC )\
+            signal ( mic_exchange_part_back_in_w )
 
         } else {
 
             #pragma offload_transfer target(mic:mic_device_id) \
-                in( mic_exchange_part_front_u: length ( 5 * mic_slice_size ) MIC_REUSE )\
-                in( mic_exchange_part_front_v: length ( 5 * mic_slice_size ) MIC_REUSE )\
-                in( mic_exchange_part_front_w: length ( 5 * mic_slice_size ) MIC_REUSE )\
-                in( mic_exchange_part_back_u : length ( 5 * mic_slice_size ) MIC_REUSE )\
-                in( mic_exchange_part_back_v : length ( 5 * mic_slice_size ) MIC_REUSE )\
-                in( mic_exchange_part_back_w : length ( 5 * mic_slice_size ) MIC_REUSE )\
-                signal(mic_exchange_part_back_w)
+            in( mic_exchange_part_front_in_u: length ( 5 * mic_slice_size ) MIC_REUSE )\
+            in( mic_exchange_part_front_in_v: length ( 5 * mic_slice_size ) MIC_REUSE )\
+            in( mic_exchange_part_front_in_w: length ( 5 * mic_slice_size ) MIC_REUSE )\
+            in( mic_exchange_part_back_in_u : length ( 5 * mic_slice_size ) MIC_REUSE )\
+            in( mic_exchange_part_back_in_v : length ( 5 * mic_slice_size ) MIC_REUSE )\
+            in( mic_exchange_part_back_in_w : length ( 5 * mic_slice_size ) MIC_REUSE )\
+                signal(mic_exchange_part_back_in_w)
         }
 
         // in(i_begin) in(i_end) in(j_begin), in(j_end) \
         // in(nMicMaxXLength) in(nMicMaxYLength) in(ntop) in(nleft) in(nfront) in(ncz_shot_shadow) in(l) \
 #pragma offload target(mic:mic_device_id) \
-        out(mic_exchange_part_front_u:into(mic_exchange_part_front_out_u) length(5*mic_slice_size) MIC_REUSE)\
-        out(mic_exchange_part_front_v:into(mic_exchange_part_front_out_v) length(5*mic_slice_size) MIC_REUSE)\
-        out(mic_exchange_part_front_w:into(mic_exchange_part_front_out_w) length(5*mic_slice_size) MIC_REUSE)\
-        out(mic_exchange_part_back_u :into(mic_exchange_part_back_out_u ) length(5*mic_slice_size) MIC_REUSE)\
-        out(mic_exchange_part_back_v :into(mic_exchange_part_back_out_v ) length(5*mic_slice_size) MIC_REUSE)\
-        out(mic_exchange_part_back_w :into(mic_exchange_part_back_out_w ) length(5*mic_slice_size) MIC_REUSE)\
+        nocopy( mic_exchange_part_front_in_u: length ( 5 * mic_slice_size ) MIC_REUSE )\
+        nocopy( mic_exchange_part_front_in_v: length ( 5 * mic_slice_size ) MIC_REUSE )\
+        nocopy( mic_exchange_part_front_in_w: length ( 5 * mic_slice_size ) MIC_REUSE )\
+        nocopy( mic_exchange_part_back_in_u : length ( 5 * mic_slice_size ) MIC_REUSE )\
+        nocopy( mic_exchange_part_back_in_v : length ( 5 * mic_slice_size ) MIC_REUSE )\
+        nocopy( mic_exchange_part_back_in_w : length ( 5 * mic_slice_size ) MIC_REUSE )\
+        out(mic_exchange_part_front_out_u:length(5*mic_slice_size) MIC_REUSE)\
+        out(mic_exchange_part_front_out_v:length(5*mic_slice_size) MIC_REUSE)\
+        out(mic_exchange_part_front_out_w:length(5*mic_slice_size) MIC_REUSE)\
+        out(mic_exchange_part_back_out_u :length(5*mic_slice_size) MIC_REUSE)\
+        out(mic_exchange_part_back_out_v :length(5*mic_slice_size) MIC_REUSE)\
+        out(mic_exchange_part_back_out_w :length(5*mic_slice_size) MIC_REUSE)\
         nocopy(mic_u  : MIC_REUSE)\
         nocopy(mic_v  : MIC_REUSE)\
         nocopy(mic_w  : MIC_REUSE)\
@@ -601,12 +609,16 @@ void calc_single_l_offload_to_mic(
         {
             // calc_single_l ( i_begin, i_end, j_begin, j_end, 5, k_mic_end - cpu_z_length,
 
-            memcpy(  mic_u                                      , mic_exchange_part_front_u, sizeof ( double ) * 5 * mic_slice_size );
-            memcpy(  mic_v                                      , mic_exchange_part_front_v, sizeof ( double ) * 5 * mic_slice_size );
-            memcpy(  mic_w                                      , mic_exchange_part_front_w, sizeof ( double ) * 5 * mic_slice_size );
-            memcpy( &mic_u[POSITION_INDEX_X(5+mic_z_length,0,0)], mic_exchange_part_back_u , sizeof ( double ) * 5 * mic_slice_size );
-            memcpy( &mic_v[POSITION_INDEX_X(5+mic_z_length,0,0)], mic_exchange_part_back_v , sizeof ( double ) * 5 * mic_slice_size );
-            memcpy( &mic_w[POSITION_INDEX_X(5+mic_z_length,0,0)], mic_exchange_part_back_w , sizeof ( double ) * 5 * mic_slice_size );
+            printf("%d nMicMaxXLength, %d nMicMaxYLength, %d ntop, %d nleft, %d nfront, %d ncz_shot_new, %d l_inner,%d ncy_shot_inner,%d ncx_shot_inner,%lf c0_inner ,%lf dtx_inner,%lf dtz_inner , %d mic_device_id,%d n_start_z_position, %d mic_slice_size %d mic_z_length\n", nMicMaxXLength,  nMicMaxYLength,  ntop,  nleft,  nfront,  ncz_shot_new,  l_inner,
+                 ncy_shot_inner, ncx_shot_inner, c0_inner , dtx_inner, dtz_inner ,  mic_device_id,
+                 n_start_z_position,  mic_slice_size,mic_z_length);
+
+            memcpy(  mic_u                                      , mic_exchange_part_front_in_u, sizeof ( double ) * 5 * mic_slice_size );
+            memcpy(  mic_v                                      , mic_exchange_part_front_in_v, sizeof ( double ) * 5 * mic_slice_size );
+            memcpy(  mic_w                                      , mic_exchange_part_front_in_w, sizeof ( double ) * 5 * mic_slice_size );
+            memcpy( &mic_u[POSITION_INDEX_X(5+mic_z_length,0,0)], mic_exchange_part_back_in_u , sizeof ( double ) * 5 * mic_slice_size );
+            memcpy( &mic_v[POSITION_INDEX_X(5+mic_z_length,0,0)], mic_exchange_part_back_in_v , sizeof ( double ) * 5 * mic_slice_size );
+            memcpy( &mic_w[POSITION_INDEX_X(5+mic_z_length,0,0)], mic_exchange_part_back_in_w , sizeof ( double ) * 5 * mic_slice_size );
 
             calc_single_l ( i_begin, i_end, j_begin, j_end, 5, 5 + mic_z_length,
                     mic_up  , mic_up1 , mic_up2 , mic_vp  , mic_vp1 ,
@@ -617,13 +629,13 @@ void calc_single_l_offload_to_mic(
                     ncy_shot,ncx_shot, c0 , dtx, dtz
             );
 
-            memcpy ( mic_exchange_part_front_u, &(mic_u[POSITION_INDEX_X(5,0,0)]), sizeof ( double ) * 5 * mic_slice_size );
-            memcpy ( mic_exchange_part_front_v, &(mic_v[POSITION_INDEX_X(5,0,0)]), sizeof ( double ) * 5 * mic_slice_size );
-            memcpy ( mic_exchange_part_front_w, &(mic_w[POSITION_INDEX_X(5,0,0)]), sizeof ( double ) * 5 * mic_slice_size );
+            memcpy ( mic_exchange_part_front_out_u, &(mic_u[POSITION_INDEX_X(5,0,0)]), sizeof ( double ) * 5 * mic_slice_size );
+            memcpy ( mic_exchange_part_front_out_v, &(mic_v[POSITION_INDEX_X(5,0,0)]), sizeof ( double ) * 5 * mic_slice_size );
+            memcpy ( mic_exchange_part_front_out_w, &(mic_w[POSITION_INDEX_X(5,0,0)]), sizeof ( double ) * 5 * mic_slice_size );
 
-            memcpy ( mic_exchange_part_back_u , &(mic_u[POSITION_INDEX_X(mic_z_length,0,0)]), sizeof ( double ) * 5 * mic_slice_size );
-            memcpy ( mic_exchange_part_back_v , &(mic_v[POSITION_INDEX_X(mic_z_length,0,0)]), sizeof ( double ) * 5 * mic_slice_size );
-            memcpy ( mic_exchange_part_back_w , &(mic_w[POSITION_INDEX_X(mic_z_length,0,0)]), sizeof ( double ) * 5 * mic_slice_size );
+            memcpy ( mic_exchange_part_back_out_u , &(mic_u[POSITION_INDEX_X(mic_z_length,0,0)]), sizeof ( double ) * 5 * mic_slice_size );
+            memcpy ( mic_exchange_part_back_out_v , &(mic_v[POSITION_INDEX_X(mic_z_length,0,0)]), sizeof ( double ) * 5 * mic_slice_size );
+            memcpy ( mic_exchange_part_back_out_w , &(mic_w[POSITION_INDEX_X(mic_z_length,0,0)]), sizeof ( double ) * 5 * mic_slice_size );
 
             double *mic_swap_temp;
             mic_swap_temp = mic_up2; mic_up2 = mic_up1; mic_up1 = mic_up; mic_up = mic_swap_temp;
@@ -914,38 +926,43 @@ void calc_shot (
         }
     }//for(l=1;l<=lt;l++) end
 
-    if( init_mic_flag == true)
+//    if( init_mic_flag == true)
+    if(true)
     {
+#pragma offload_transfer target(mic:0) \
+        nocopy(mic_u  :MIC_FREE)\
+        nocopy(mic_v  :MIC_FREE)\
+        nocopy(mic_w  :MIC_FREE)\
+        nocopy(mic_up2:MIC_FREE)\
+        nocopy(mic_vp :MIC_FREE)\
+        nocopy(mic_vp1:MIC_FREE)\
+        nocopy(mic_vp2:MIC_FREE)\
+        nocopy(mic_wp :MIC_FREE)\
+        nocopy(mic_wp1:MIC_FREE)\
+        nocopy(mic_wp2:MIC_FREE)\
+        nocopy(mic_us :MIC_FREE)\
+        nocopy(mic_us1:MIC_FREE)\
+        nocopy(mic_us2:MIC_FREE)\
+        nocopy(mic_vs :MIC_FREE)\
+        nocopy(mic_vs1:MIC_FREE)\
+        nocopy(mic_vs2:MIC_FREE)\
+        nocopy(mic_ws :MIC_FREE)\
+        nocopy(mic_ws1:MIC_FREE)\
+        nocopy(mic_ws2:MIC_FREE)
+
+        // copy_length = mic_slice_size * ( mic_z_length + 10 );
+        if ( 169-ntop >= k_mic_begin) {
 #ifdef SHOW_NORMAL_OUTPUT
         printf("Getting things back...");
 #endif
-#pragma offload_transfer target(mic:0) \
-        nocopy(mic_u  :length(copy_length) MIC_FREE)\
-        nocopy(mic_v  :length(copy_length) MIC_FREE)\
-        nocopy(mic_w  :length(copy_length) MIC_FREE)\
-        nocopy(mic_up2:length(copy_length) MIC_FREE)\
-        nocopy(mic_vp :length(copy_length) MIC_FREE)\
-        nocopy(mic_vp1:length(copy_length) MIC_FREE)\
-        nocopy(mic_vp2:length(copy_length) MIC_FREE)\
-        nocopy(mic_wp :length(copy_length) MIC_FREE)\
-        nocopy(mic_wp1:length(copy_length) MIC_FREE)\
-        nocopy(mic_wp2:length(copy_length) MIC_FREE)\
-        nocopy(mic_us :length(copy_length) MIC_FREE)\
-        nocopy(mic_us1:length(copy_length) MIC_FREE)\
-        nocopy(mic_us2:length(copy_length) MIC_FREE)\
-        nocopy(mic_vs :length(copy_length) MIC_FREE)\
-        nocopy(mic_vs1:length(copy_length) MIC_FREE)\
-        nocopy(mic_vs2:length(copy_length) MIC_FREE)\
-        nocopy(mic_ws :length(copy_length) MIC_FREE)\
-        nocopy(mic_ws1:length(copy_length) MIC_FREE)\
-        nocopy(mic_ws2:length(copy_length) MIC_FREE)
 
-        copy_length = mic_slice_size * ( mic_z_length + 10 );
-        if ( 169-ntop >= k_mic_begin) {
             // ON MIC
-#pragma offload target(mic:0) out(mic_up1 : length(copy_length) MIC_FREE) signal(mic_up1)
+        printf("Hit 1\n");
+#pragma offload target(mic:0) out(mic_up1 : length(mic_slice_size * ( mic_z_length + 10 )) MIC_FREE) signal(mic_up1)
             {}
 #pragma offload_wait target(mic:0) wait(mic_up1)
+        printf("Hit 2\n");
+
         }
     }
 
