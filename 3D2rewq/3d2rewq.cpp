@@ -25,7 +25,7 @@
 
 #define OUT_PUT_SLICE_Z_INDEX           169
 
-#define USE_MIC_MAX_LENGTH_THRESHOLD    90
+#define USE_MIC_MAX_LENGTH_THRESHOLD    80
 
 #ifdef __MIC__
 
@@ -37,31 +37,13 @@
 
 #endif
 
-#define MIC_CPU_RATE    0.7
+#define MIC_CPU_RATE    0.25
 
 #define MIC_COUNT       1
 
 #define POSITION_INDEX_HOST_X(_z,_y,_x)        ((_z)*ny*nx + (_y)*nx + (_x))
 #define POSITION_INDEX_HOST_Y(_z,_y,_x)        ((_x)*nz*ny + (_z)*ny + (_y))
 #define POSITION_INDEX_HOST_Z(_z,_y,_x)        ((_y)*nx*nz + (_x)*nz + (_z))
-
-// #ifdef USE_DEBUG_PRINT
-
-//     #ifdef __MIC__
-//     #   define DEBUG_PRINT(...) printf(__VA_ARGS__)
-//     #else
-//     #   define DEBUG_PRINT(...) if(debug_flag)fprintf(file_debug_log,__VA_ARGS__)
-//     #endif
-
-// #else
-
-// #   define DEBUG_PRINT(...)
-
-// #endif
-
-//#define POSITION_DEBUG_ASSERT
-
-//#define
 
 #ifndef POSITION_DEBUG_ASSERT
 
