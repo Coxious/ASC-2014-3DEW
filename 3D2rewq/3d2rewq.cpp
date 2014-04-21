@@ -25,7 +25,7 @@
 
 #define OUT_PUT_SLICE_Z_INDEX           169
 
-#define USE_MIC_MAX_LENGTH_THRESHOLD    80
+#define USE_MIC_MAX_LENGTH_THRESHOLD    30
 
 #ifdef __MIC__
 
@@ -39,7 +39,7 @@
 
 #define MIC_CPU_RATE    0.25
 
-#define MIC_COUNT       1
+#define MIC_COUNT       3
 
 #define POSITION_INDEX_HOST_X(_z,_y,_x)        ((_z)*ny*nx + (_y)*nx + (_x))
 #define POSITION_INDEX_HOST_Y(_z,_y,_x)        ((_x)*nz*ny + (_z)*ny + (_y))
@@ -707,7 +707,7 @@ void calc_shot (
     int dtx_shadow      = dtx;
     int dtz_shadow      = dtz;
 
-#pragma offload_transfer target(mic:0) in(dtx) in(dtz) in(ncy_shot) in(ncx_shot)
+//#pragma offload_transfer target(mic:0) in(dtx) in(dtz) in(ncy_shot) in(ncx_shot)
 
     ntop = ntop - 1;
     nfront = nfront - 1;
@@ -751,7 +751,6 @@ void calc_shot (
     double * mic_exchange_part_v[MIC_COUNT+1][2];
 
     double * mic_exchange_part_w[MIC_COUNT+1][2];
-
 
     int mic_z_each_length = MIC_CPU_RATE * nMicMaxZLength;
 
@@ -868,13 +867,9 @@ void calc_shot (
                 mic_ws2[i_mic] = &ws2[POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
             }
 
-            printf("start copy in...mic_slice_size %d %p\n",mic_slice_size,mic_exchange_part_u[0][0]);
             memcpy(mic_exchange_part_u[0][0],mic_u[0],mic_slice_size*5*sizeof(double));
-            printf("finish copy in...u\n");
             memcpy(mic_exchange_part_v[0][0],mic_v[0],mic_slice_size*5*sizeof(double));
-            printf("finish copy in...v\n");
             memcpy(mic_exchange_part_w[0][0],mic_w[0],mic_slice_size*5*sizeof(double));
-            printf("finish copy in...w\n");
 
             for(int i_mic=0;i_mic<MIC_COUNT;++i_mic){
                 if(5 + cpu_z_length + i_mic * mic_z_each_length < k_mic_end ){
@@ -917,12 +912,9 @@ void calc_shot (
                 #pragma offload_wait target(mic:i_mic) wait(mic_exchange_part_w[i_mic+1][1])
             }
 
-            printf("start copy out...\n");
             memcpy ( &(u[POSITION_INDEX_X(k_mic_begin,0,0)]), mic_exchange_part_u[0][1], sizeof ( double )* 5 * mic_slice_size );
             memcpy ( &(v[POSITION_INDEX_X(k_mic_begin,0,0)]), mic_exchange_part_v[0][1], sizeof ( double )* 5 * mic_slice_size );
             memcpy ( &(w[POSITION_INDEX_X(k_mic_begin,0,0)]), mic_exchange_part_w[0][1], sizeof ( double )* 5 * mic_slice_size );
-            printf("finish copy out...\n");
-
         }
     }//for(l=1;l<=lt;l++) end
 
@@ -931,10 +923,10 @@ void calc_shot (
     {
         // copy_length = mic_slice_size * ( mic_z_length + 10 );
         if ( OUT_PUT_SLICE_Z_INDEX-ntop >= k_mic_begin) {
-            int output_device_id = (OUT_PUT_SLICE_Z_INDEX - cpu_z_length)/mic_z_each_length;
+            int output_device_id = (OUT_PUT_SLICE_Z_INDEX - k_mic_begin -ntop )/mic_z_each_length;
 
 #ifdef SHOW_NORMAL_OUTPUT
-            printf("Getting things back... on mic %d",output_device_id);
+            printf("Getting things back... on mic %d cpu_z_length %d mic_z_each_length %d %p\n",output_device_id,cpu_z_length,mic_z_each_length,mic_up1[output_device_id]);
 #endif
             double * out_up1 = mic_up1[output_device_id];
             // ON MIC
@@ -942,32 +934,57 @@ void calc_shot (
             out(out_up1 : length(mic_slice_size * ( mic_z_each_length + 10 )) MIC_REUSE)
             {}
 
+#ifdef SHOW_NORMAL_OUTPUT
+            printf("All back... \n");
+#endif
 
         }
 
         for(int i_mic=0;i_mic<MIC_COUNT;++i_mic){
             if(init_mic_flag[i_mic]){
+                printf("Free %d MIC data...uvw\n",i_mic);
+                double * mic_free_u   =  mic_u[i_mic];
+                double * mic_free_v   =  mic_v[i_mic];
+                double * mic_free_w   =  mic_w[i_mic];
+                double * mic_free_up1 =  mic_up1[i_mic];
+                double * mic_free_up2 =  mic_up2[i_mic];
+                double * mic_free_vp  =  mic_vp [i_mic];
+                double * mic_free_vp1 =  mic_vp1[i_mic];
+                double * mic_free_vp2 =  mic_vp2[i_mic];
+                double * mic_free_wp  =  mic_wp [i_mic];
+                double * mic_free_wp1 =  mic_wp1[i_mic];
+                double * mic_free_wp2 =  mic_wp2[i_mic];
+                double * mic_free_us  =  mic_us [i_mic];
+                double * mic_free_us1 =  mic_us1[i_mic];
+                double * mic_free_us2 =  mic_us2[i_mic];
+                double * mic_free_vs  =  mic_vs [i_mic];
+                double * mic_free_vs1 =  mic_vs1[i_mic];
+                double * mic_free_vs2 =  mic_vs2[i_mic];
+                double * mic_free_ws  =  mic_ws [i_mic];
+                double * mic_free_ws1 =  mic_ws1[i_mic];
+                double * mic_free_ws2 =  mic_ws2[i_mic];
+
                 #pragma offload_transfer target(mic:i_mic) \
-                        nocopy(mic_u  [i_mic]:MIC_FREE)\
-                        nocopy(mic_v  [i_mic]:MIC_FREE)\
-                        nocopy(mic_w  [i_mic]:MIC_FREE)\
-                        nocopy(mic_up1[i_mic]:MIC_FREE)\
-                        nocopy(mic_up2[i_mic]:MIC_FREE)\
-                        nocopy(mic_vp [i_mic]:MIC_FREE)\
-                        nocopy(mic_vp1[i_mic]:MIC_FREE)\
-                        nocopy(mic_vp2[i_mic]:MIC_FREE)\
-                        nocopy(mic_wp [i_mic]:MIC_FREE)\
-                        nocopy(mic_wp1[i_mic]:MIC_FREE)\
-                        nocopy(mic_wp2[i_mic]:MIC_FREE)\
-                        nocopy(mic_us [i_mic]:MIC_FREE)\
-                        nocopy(mic_us1[i_mic]:MIC_FREE)\
-                        nocopy(mic_us2[i_mic]:MIC_FREE)\
-                        nocopy(mic_vs [i_mic]:MIC_FREE)\
-                        nocopy(mic_vs1[i_mic]:MIC_FREE)\
-                        nocopy(mic_vs2[i_mic]:MIC_FREE)\
-                        nocopy(mic_ws [i_mic]:MIC_FREE)\
-                        nocopy(mic_ws1[i_mic]:MIC_FREE)\
-                        nocopy(mic_ws2[i_mic]:MIC_FREE)
+                        nocopy(mic_free_u:MIC_FREE)\
+                        nocopy(mic_free_v:MIC_FREE)\
+                        nocopy(mic_free_w:MIC_FREE)\
+                        nocopy(mic_free_up1:MIC_FREE)\
+                        nocopy(mic_free_up2:MIC_FREE)\
+                        nocopy(mic_free_vp :MIC_FREE)\
+                        nocopy(mic_free_vp1:MIC_FREE)\
+                        nocopy(mic_free_vp2:MIC_FREE)\
+                        nocopy(mic_free_wp :MIC_FREE)\
+                        nocopy(mic_free_wp1:MIC_FREE)\
+                        nocopy(mic_free_wp2:MIC_FREE)\
+                        nocopy(mic_free_us :MIC_FREE)\
+                        nocopy(mic_free_us1:MIC_FREE)\
+                        nocopy(mic_free_us2:MIC_FREE)\
+                        nocopy(mic_free_vs :MIC_FREE)\
+                        nocopy(mic_free_vs1:MIC_FREE)\
+                        nocopy(mic_free_vs2:MIC_FREE)\
+                        nocopy(mic_free_ws :MIC_FREE)\
+                        nocopy(mic_free_ws1:MIC_FREE)\
+                        nocopy(mic_free_ws2:MIC_FREE)
             }
         }
     }
@@ -1040,8 +1057,10 @@ int main ( int argc, char **argv ) {
     dtx = dt / unit;
     dtz = dt / unit;
 
-#pragma offload_transfer target(mic:0) in(dtx) in(dtz) in(ncy_shot) in(ncx_shot)
-
+    for(int i =0;i<MIC_COUNT;++i)
+    {
+        #pragma offload_transfer target(mic:i) in(dtx) in(dtz) in(ncy_shot) in(ncx_shot)
+    }
     fout = fopen ( outfile, "wb" );
 
     // shot is divided to cluster, MPI
@@ -1062,7 +1081,6 @@ int main ( int argc, char **argv ) {
                 1, lt,
                 &memory_blocks
                 );
-
 
         fwrite ( memory_blocks.to_write, sizeof ( double ), nSliceSize, fout );
 
