@@ -23,7 +23,9 @@
 // #    define  CORE_NUM 8
 // #endif
 
-#define USE_MIC_MAX_LENGTH_THRESHOLD    91
+#define OUT_PUT_SLICE_Z_INDEX           169
+
+#define USE_MIC_MAX_LENGTH_THRESHOLD    90
 
 #ifdef __MIC__
 
@@ -147,6 +149,8 @@ int mic_slice_size;
 
 double *up_out;
 
+bool init_mic_flag[MIC_COUNT];
+
 void initailize() {
     strcpy ( tmp, "date " );
     strncat ( tmp, ">> ", 3 );
@@ -254,6 +258,9 @@ void initailize() {
         for ( int j = 0; j < 5; j++ )
             c[2 + i][j] = c[1][i] * c[1][j];
 
+    for(int i = 0;i<MIC_COUNT;++i){
+        init_mic_flag[i] = false;
+    }
     // for ( int j = 0; j < 7; ++j ) {
     //     for ( int i = 0; i < 5; ++i ) {
     //         c[j][10 - i] = c[j][i];
@@ -386,8 +393,7 @@ void calc_single_slice (
                     for ( int kk = 1; kk <= 5; kk++ ) {
 
                         // c[1 + kk][kkk - 1] = c[1 + kk][kkk - 1];
-#ifdef __MIC__
-#endif
+
                         _tempuxy = ( u_inner[POSITION_INDEX_X ( k, j + kkk, i + kk )] + u_inner[POSITION_INDEX_X ( k, j - kkk, i - kk )] ) - ( u_inner[POSITION_INDEX_X ( k, j + kkk, i - kk )] + u_inner[POSITION_INDEX_X ( k, j - kkk, i + kk ) ] );
                         _tempvxy = ( v_inner[POSITION_INDEX_X ( k, j + kkk, i + kk )] + v_inner[POSITION_INDEX_X ( k, j - kkk, i - kk )] ) - ( v_inner[POSITION_INDEX_X ( k, j + kkk, i - kk )] + v_inner[POSITION_INDEX_X ( k, j - kkk, i + kk ) ] );
 
@@ -509,7 +515,6 @@ void calc_single_l_offload_to_mic(
     // double * mic_exchange_part_back_v  = mic_exchange_part_back_in_v ;
     // double * mic_exchange_part_back_w  = mic_exchange_part_back_in_w ;
 
-    static bool init_mic_flag[MIC_COUNT] = {0};
         if (!init_mic_flag[mic_device_id]) {
 
             init_mic_flag[mic_device_id] = true;
@@ -609,10 +614,6 @@ void calc_single_l_offload_to_mic(
         {
             // calc_single_l ( i_begin, i_end, j_begin, j_end, 5, k_mic_end - cpu_z_length,
 
-            printf("%d nMicMaxXLength, %d nMicMaxYLength, %d ntop, %d nleft, %d nfront, %d ncz_shot_new, %d l_inner,%d ncy_shot_inner,%d ncx_shot_inner,%lf c0_inner ,%lf dtx_inner,%lf dtz_inner , %d mic_device_id,%d n_start_z_position, %d mic_slice_size %d mic_z_length\n", nMicMaxXLength,  nMicMaxYLength,  ntop,  nleft,  nfront,  ncz_shot_new,  l_inner,
-                 ncy_shot_inner, ncx_shot_inner, c0_inner , dtx_inner, dtz_inner ,  mic_device_id,
-                 n_start_z_position,  mic_slice_size,mic_z_length);
-
             memcpy(  mic_u                                      , mic_exchange_part_front_in_u, sizeof ( double ) * 5 * mic_slice_size );
             memcpy(  mic_v                                      , mic_exchange_part_front_in_v, sizeof ( double ) * 5 * mic_slice_size );
             memcpy(  mic_w                                      , mic_exchange_part_front_in_w, sizeof ( double ) * 5 * mic_slice_size );
@@ -653,7 +654,6 @@ void calc_shot (
         int lStart, int lEnd,
         PMEMORY_BLOCKS pMemBlocks
         ) {
-    bool init_mic_flag = false;
 
     int i_begin, i_end, j_begin, j_end, k_begin, k_end, k_mic_begin, k_mic_end;
     int nMicXLength, nMicYLength, nMicZLength;
@@ -663,6 +663,28 @@ void calc_shot (
 
     double * to_write   = pMemBlocks->to_write;
     double * up_out     = ( ( double * ) malloc ( mic_slice_size * sizeof ( double ) ) );
+
+    double * mic_up [MIC_COUNT];
+    double * mic_up1[MIC_COUNT];
+    double * mic_up2[MIC_COUNT];
+    double * mic_vp [MIC_COUNT];
+    double * mic_vp1[MIC_COUNT];
+    double * mic_vp2[MIC_COUNT];
+    double * mic_wp [MIC_COUNT];
+    double * mic_wp1[MIC_COUNT];
+    double * mic_wp2[MIC_COUNT];
+    double * mic_us [MIC_COUNT];
+    double * mic_us1[MIC_COUNT];
+    double * mic_us2[MIC_COUNT];
+    double * mic_vs [MIC_COUNT];
+    double * mic_vs1[MIC_COUNT];
+    double * mic_vs2[MIC_COUNT];
+    double * mic_ws [MIC_COUNT];
+    double * mic_ws1[MIC_COUNT];
+    double * mic_ws2[MIC_COUNT];
+    double * mic_u  [MIC_COUNT];
+    double * mic_v  [MIC_COUNT];
+    double * mic_w  [MIC_COUNT];
 
     double * up  = pMemBlocks->up;
     double * up1 = pMemBlocks->up1;
@@ -685,11 +707,7 @@ void calc_shot (
     double * u   = pMemBlocks->u;
     double * v   = pMemBlocks->v;
     double * w   = pMemBlocks->w;
-    double * mic_u;
-    double * mic_v;
-    double * mic_w;
     double * mic_upout;
-    int mic_z_length;
     int copy_length ;
     int ncz_shot_shadow = ncz_shot;
     int mic_slice_size_shadow = mic_slice_size;
@@ -752,15 +770,20 @@ void calc_shot (
 
     double * mic_exchange_part_w[MIC_COUNT+1][2];
 
-    mic_z_length = MIC_CPU_RATE * nMicMaxZLength;
 
-    int cpu_z_length = nMicMaxZLength - mic_z_length;
+    int mic_z_each_length = MIC_CPU_RATE * nMicMaxZLength;
+
+    int mic_z_total_length = MIC_COUNT * mic_z_each_length;
+
+    int cpu_z_length = nMicMaxZLength - mic_z_total_length;
 
     k_mic_begin =5+cpu_z_length;
 
-    mic_u = &u[POSITION_INDEX_X (k_mic_begin - 5,0, 0 )];
-    mic_v = &v[POSITION_INDEX_X (k_mic_begin - 5,0, 0 )];
-    mic_w = &w[POSITION_INDEX_X (k_mic_begin - 5,0, 0 )];
+    for(int i = 0;i<MIC_COUNT;++i){
+        mic_u[i] = &u[POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i,0, 0 )];
+        mic_v[i] = &v[POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i,0, 0 )];
+        mic_w[i] = &w[POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i,0, 0 )];
+    }
 
     for(int i = 0 ; i<MIC_COUNT+1 ;++i){
         mic_exchange_part_u[i][0] = ( double * ) calloc ( mic_slice_size * 5 , sizeof ( double ));
@@ -770,25 +793,6 @@ void calc_shot (
         mic_exchange_part_w[i][0] = ( double * ) calloc ( mic_slice_size * 5 , sizeof ( double ));
         mic_exchange_part_w[i][1] = ( double * ) calloc ( mic_slice_size * 5 , sizeof ( double ));
     }
-
-    double * mic_up  ;
-    double * mic_up1 ;
-    double * mic_up2 ;
-    double * mic_vp  ;
-    double * mic_vp1 ;
-    double * mic_vp2 ;
-    double * mic_wp  ;
-    double * mic_wp1 ;
-    double * mic_wp2 ;
-    double * mic_us  ;
-    double * mic_us1 ;
-    double * mic_us2 ;
-    double * mic_vs  ;
-    double * mic_vs1 ;
-    double * mic_vs2 ;
-    double * mic_ws  ;
-    double * mic_ws1 ;
-    double * mic_ws2 ;
 
     for ( int l = lStart; l <= lEnd; l++ ) {
         xmax = l * dt * velmax;
@@ -861,44 +865,54 @@ void calc_shot (
             printf ( "l %d started mic nMicMaxLength %d %d %d\n", l, nMicXLength, nMicYLength, nMicZLength );
 #endif
 
-            mic_up  = &up [POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-            mic_up1 = &up1[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-            mic_up2 = &up2[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-            mic_vp  = &vp [POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-            mic_vp1 = &vp1[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-            mic_vp2 = &vp2[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-            mic_wp  = &wp [POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-            mic_wp1 = &wp1[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-            mic_wp2 = &wp2[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-            mic_us  = &us [POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-            mic_us1 = &us1[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-            mic_us2 = &us2[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-            mic_vs  = &vs [POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-            mic_vs1 = &vs1[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-            mic_vs2 = &vs2[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-            mic_ws  = &ws [POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-            mic_ws1 = &ws1[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
-            mic_ws2 = &ws2[POSITION_INDEX_X (k_mic_begin - 5, 0,0)];
+            for(int i_mic=0;i_mic<MIC_COUNT;++i_mic){
+                mic_up [i_mic] = &up [POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
+                mic_up1[i_mic] = &up1[POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
+                mic_up2[i_mic] = &up2[POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
+                mic_vp [i_mic] = &vp [POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
+                mic_vp1[i_mic] = &vp1[POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
+                mic_vp2[i_mic] = &vp2[POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
+                mic_wp [i_mic] = &wp [POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
+                mic_wp1[i_mic] = &wp1[POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
+                mic_wp2[i_mic] = &wp2[POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
+                mic_us [i_mic] = &us [POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
+                mic_us1[i_mic] = &us1[POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
+                mic_us2[i_mic] = &us2[POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
+                mic_vs [i_mic] = &vs [POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
+                mic_vs1[i_mic] = &vs1[POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
+                mic_vs2[i_mic] = &vs2[POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
+                mic_ws [i_mic] = &ws [POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
+                mic_ws1[i_mic] = &ws1[POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
+                mic_ws2[i_mic] = &ws2[POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
+            }
 
-            memcpy(mic_exchange_part_u[0][0],mic_u,mic_slice_size*5*sizeof(double));
-            memcpy(mic_exchange_part_v[0][0],mic_v,mic_slice_size*5*sizeof(double));
-            memcpy(mic_exchange_part_w[0][0],mic_w,mic_slice_size*5*sizeof(double));
+            printf("start copy in...mic_slice_size %d %p\n",mic_slice_size,mic_exchange_part_u[0][0]);
+            memcpy(mic_exchange_part_u[0][0],mic_u[0],mic_slice_size*5*sizeof(double));
+            printf("finish copy in...u\n");
+            memcpy(mic_exchange_part_v[0][0],mic_v[0],mic_slice_size*5*sizeof(double));
+            printf("finish copy in...v\n");
+            memcpy(mic_exchange_part_w[0][0],mic_w[0],mic_slice_size*5*sizeof(double));
+            printf("finish copy in...w\n");
 
-            calc_single_l_offload_to_mic(
-                i_begin,  i_end,  j_begin,  j_end,
-                mic_up  ,  mic_up1 ,  mic_up2 ,  mic_vp  ,  mic_vp1 ,
-                mic_vp2 ,  mic_wp  ,  mic_wp1 ,  mic_wp2 ,  mic_us  ,
-                mic_us1 ,  mic_us2 ,  mic_vs  ,  mic_vs1 ,  mic_vs2 ,
-                mic_ws  ,  mic_ws1 ,  mic_ws2 ,  mic_u   ,  mic_v   ,  mic_w,
-                nMicMaxXLength,  nMicMaxYLength,  ntop,  nleft,  nfront,  ncz_shot_shadow,  l,
-                ncy_shot, ncx_shot, c0 , dtx, dtz ,  0,
-                cpu_z_length,mic_slice_size,
-                mic_exchange_part_u[0][0] , mic_exchange_part_v[0][0] , mic_exchange_part_w[0][0],
-                mic_exchange_part_u[1][1] , mic_exchange_part_v[1][1] , mic_exchange_part_w[1][1],
-                mic_exchange_part_u[0][1] , mic_exchange_part_v[0][1] , mic_exchange_part_w[0][1],
-                mic_exchange_part_u[1][0] , mic_exchange_part_v[1][0] , mic_exchange_part_w[1][0],
-                mic_z_length
-            );
+            for(int i_mic=0;i_mic<MIC_COUNT;++i_mic){
+                if(5 + cpu_z_length + i_mic * mic_z_each_length < k_mic_end ){
+                    calc_single_l_offload_to_mic(
+                        i_begin,  i_end,  j_begin,  j_end,
+                        mic_up [i_mic] ,  mic_up1[i_mic] ,  mic_up2[i_mic] ,  mic_vp [i_mic] ,  mic_vp1[i_mic] ,
+                        mic_vp2[i_mic] ,  mic_wp [i_mic] ,  mic_wp1[i_mic] ,  mic_wp2[i_mic] ,  mic_us [i_mic] ,
+                        mic_us1[i_mic] ,  mic_us2[i_mic] ,  mic_vs [i_mic] ,  mic_vs1[i_mic] ,  mic_vs2[i_mic] ,
+                        mic_ws [i_mic] ,  mic_ws1[i_mic] ,  mic_ws2[i_mic] ,  mic_u  [i_mic] ,  mic_v  [i_mic] ,  mic_w[i_mic],
+                        nMicMaxXLength,  nMicMaxYLength,  ntop,  nleft,  nfront,  ncz_shot_shadow,  l,
+                        ncy_shot, ncx_shot, c0 , dtx, dtz ,  i_mic,
+                        cpu_z_length + i_mic * mic_z_each_length ,mic_slice_size,
+                        mic_exchange_part_u[i_mic][0] , mic_exchange_part_v[i_mic][0] , mic_exchange_part_w[i_mic][0],
+                        mic_exchange_part_u[i_mic+1][1] , mic_exchange_part_v[i_mic+1][1] , mic_exchange_part_w[i_mic+1][1],
+                        mic_exchange_part_u[i_mic][1] , mic_exchange_part_v[i_mic][1] , mic_exchange_part_w[i_mic][1],
+                        mic_exchange_part_u[i_mic+1][0] , mic_exchange_part_v[i_mic+1][0] , mic_exchange_part_w[i_mic+1][0],
+                        mic_z_each_length
+                    );
+                }
+            }
 
             calc_single_l ( i_begin, i_end, j_begin, j_end, k_begin, k_end,
                     up  , up1 , up2 , vp  , vp1 ,
@@ -917,58 +931,68 @@ void calc_shot (
             swap_temp = vs2; vs2 = vs1; vs1 = vs; vs = swap_temp;
             swap_temp = ws2; ws2 = ws1; ws1 = ws; ws = swap_temp;
 
-#pragma offload_wait target(mic:0) wait(mic_exchange_part_w[1][1])
+            for(int i_mic=0;i_mic<MIC_COUNT;++i_mic){
+                #pragma offload_wait target(mic:i_mic) wait(mic_exchange_part_w[i_mic+1][1])
+            }
 
+            printf("start copy out...\n");
             memcpy ( &(u[POSITION_INDEX_X(k_mic_begin,0,0)]), mic_exchange_part_u[0][1], sizeof ( double )* 5 * mic_slice_size );
             memcpy ( &(v[POSITION_INDEX_X(k_mic_begin,0,0)]), mic_exchange_part_v[0][1], sizeof ( double )* 5 * mic_slice_size );
             memcpy ( &(w[POSITION_INDEX_X(k_mic_begin,0,0)]), mic_exchange_part_w[0][1], sizeof ( double )* 5 * mic_slice_size );
+            printf("finish copy out...\n");
 
         }
     }//for(l=1;l<=lt;l++) end
 
-//    if( init_mic_flag == true)
-    if(true)
+//   s if( init_mic_flag == true)
+    if(init_mic_flag[0] == true)
     {
-#pragma offload_transfer target(mic:0) \
-        nocopy(mic_u  :MIC_FREE)\
-        nocopy(mic_v  :MIC_FREE)\
-        nocopy(mic_w  :MIC_FREE)\
-        nocopy(mic_up2:MIC_FREE)\
-        nocopy(mic_vp :MIC_FREE)\
-        nocopy(mic_vp1:MIC_FREE)\
-        nocopy(mic_vp2:MIC_FREE)\
-        nocopy(mic_wp :MIC_FREE)\
-        nocopy(mic_wp1:MIC_FREE)\
-        nocopy(mic_wp2:MIC_FREE)\
-        nocopy(mic_us :MIC_FREE)\
-        nocopy(mic_us1:MIC_FREE)\
-        nocopy(mic_us2:MIC_FREE)\
-        nocopy(mic_vs :MIC_FREE)\
-        nocopy(mic_vs1:MIC_FREE)\
-        nocopy(mic_vs2:MIC_FREE)\
-        nocopy(mic_ws :MIC_FREE)\
-        nocopy(mic_ws1:MIC_FREE)\
-        nocopy(mic_ws2:MIC_FREE)
-
         // copy_length = mic_slice_size * ( mic_z_length + 10 );
-        if ( 169-ntop >= k_mic_begin) {
+        if ( OUT_PUT_SLICE_Z_INDEX-ntop >= k_mic_begin) {
+            int output_device_id = (OUT_PUT_SLICE_Z_INDEX - cpu_z_length)/mic_z_each_length;
+
 #ifdef SHOW_NORMAL_OUTPUT
-        printf("Getting things back...");
+            printf("Getting things back... on mic %d",output_device_id);
 #endif
-
+            double * out_up1 = mic_up1[output_device_id];
             // ON MIC
-        printf("Hit 1\n");
-#pragma offload target(mic:0) out(mic_up1 : length(mic_slice_size * ( mic_z_length + 10 )) MIC_FREE) signal(mic_up1)
+#pragma offload target(mic:output_device_id) \
+            out(out_up1 : length(mic_slice_size * ( mic_z_each_length + 10 )) MIC_REUSE)
             {}
-#pragma offload_wait target(mic:0) wait(mic_up1)
-        printf("Hit 2\n");
 
+
+        }
+
+        for(int i_mic=0;i_mic<MIC_COUNT;++i_mic){
+            if(init_mic_flag[i_mic]){
+                #pragma offload_transfer target(mic:i_mic) \
+                        nocopy(mic_u  [i_mic]:MIC_FREE)\
+                        nocopy(mic_v  [i_mic]:MIC_FREE)\
+                        nocopy(mic_w  [i_mic]:MIC_FREE)\
+                        nocopy(mic_up1[i_mic]:MIC_FREE)\
+                        nocopy(mic_up2[i_mic]:MIC_FREE)\
+                        nocopy(mic_vp [i_mic]:MIC_FREE)\
+                        nocopy(mic_vp1[i_mic]:MIC_FREE)\
+                        nocopy(mic_vp2[i_mic]:MIC_FREE)\
+                        nocopy(mic_wp [i_mic]:MIC_FREE)\
+                        nocopy(mic_wp1[i_mic]:MIC_FREE)\
+                        nocopy(mic_wp2[i_mic]:MIC_FREE)\
+                        nocopy(mic_us [i_mic]:MIC_FREE)\
+                        nocopy(mic_us1[i_mic]:MIC_FREE)\
+                        nocopy(mic_us2[i_mic]:MIC_FREE)\
+                        nocopy(mic_vs [i_mic]:MIC_FREE)\
+                        nocopy(mic_vs1[i_mic]:MIC_FREE)\
+                        nocopy(mic_vs2[i_mic]:MIC_FREE)\
+                        nocopy(mic_ws [i_mic]:MIC_FREE)\
+                        nocopy(mic_ws1[i_mic]:MIC_FREE)\
+                        nocopy(mic_ws2[i_mic]:MIC_FREE)
+            }
         }
     }
 
     for ( int j = 5; j < nMicYLength + 5; j++ )
         for ( int i = 5; i < nMicXLength + 5; i++ ) {
-            up_out[POSITION_INDEX_X ( 0, j, i )] = up1[POSITION_INDEX_X ( 169 - ntop + 5, j, i )];
+            up_out[POSITION_INDEX_X ( 0, j, i )] = up1[POSITION_INDEX_X ( OUT_PUT_SLICE_Z_INDEX - ntop + 5, j, i )];
         }
 
     for ( int j = nfront; j < nback; j++ )
