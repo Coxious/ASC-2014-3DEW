@@ -13,7 +13,7 @@
 
 //#define SHOW_NORMAL_OUTPUT
 
-#define DEBUG_NO_PARALLEL
+#define USE_OMP_PARALLEL                false
 
 #define SHOW_NORMAL_OUTPUT
 
@@ -31,15 +31,15 @@
 
 #ifdef __MIC__
 
-#define USE_OMP_SLICES_ON_EACH_CORE_MIN     10
+#define USE_OMP_SLICES_ON_EACH_CORE_MIN     3
 
 #else
 
-#define USE_OMP_SLICES_ON_EACH_CORE_MIN    10
+#define USE_OMP_SLICES_ON_EACH_CORE_MIN    5
 
 #endif
 
-#define MIC_CPU_RATE    0.2
+#define MIC_CPU_RATE    0.4
 
 #define MIC_COUNT       1
 
@@ -276,6 +276,33 @@ void initailize() {
 //  return sum;
 // }
 
+
+MIC_VAR
+inline
+void gather_single_slice ( const int i_begin, const int i_end, const int j_begin, const int j_end, const int k,
+        double * up_inner  , double * up_inner1 , double * up_inner2 , double * vp_inner  , double * vp_inner1 ,
+        double * vp_inner2 , double * wp_inner  , double * wp_inner1 , double * wp_inner2 , double * us_inner  ,
+        double * us_inner1 , double * us_inner2 , double * vs_inner  , double * vs_inner1 , double * vs_inner2 ,
+        double * ws_inner  , double * ws_inner1 , double * ws_inner2 , double * u_inner   , double * v_inner   , double * w_inner,
+        const int nMicMaxXLength, const int nMicMaxYLength)
+{
+    for ( int j = j_begin; j < j_end; j++ )
+        for ( int i = i_begin; i < i_end; i++ ) {
+            int nIndex              = POSITION_INDEX_X ( k, j, i );
+
+            up_inner[nIndex] += ( 2 * up_inner1[nIndex] - up_inner2[nIndex] );
+            vp_inner[nIndex] += ( 2 * vp_inner1[nIndex] - vp_inner2[nIndex] );
+            wp_inner[nIndex] += ( 2 * wp_inner1[nIndex] - wp_inner2[nIndex] );
+            us_inner[nIndex] += ( 2 * us_inner1[nIndex] - us_inner2[nIndex] );
+            vs_inner[nIndex] += ( 2 * vs_inner1[nIndex] - vs_inner2[nIndex] );
+            ws_inner[nIndex] += ( 2 * ws_inner1[nIndex] - ws_inner2[nIndex] );
+            u_inner[nIndex] = up_inner[nIndex] + us_inner[nIndex];
+            v_inner[nIndex] = vp_inner[nIndex] + vs_inner[nIndex];
+            w_inner[nIndex] = wp_inner[nIndex] + ws_inner[nIndex];
+
+        }//for(i=nleft;i<nright;i++) end
+}
+
 MIC_VAR
 inline
 void calc_single_slice (
@@ -433,13 +460,18 @@ void calc_single_l (
 
     const int n_slice_on_each_core = (k_end - k_begin) / seperate_num;
 
-    if(seperate_num > 1){
+    if(seperate_num > 1 && USE_OMP_PARALLEL){
 
         #pragma omp parallel for
         for (int k = k_begin ; k < k_end; k+= n_slice_on_each_core ) {
             volatile int k_inner = k;
+
 #ifdef SHOW_NORMAL_OUTPUT
-            printf ( "Paralleling %d to %d\n", k_inner,k_inner + n_slice_on_each_core -1 );
+#   ifndef __MIC__
+            printf ( "Paralleling %d to %d on cpu\n", k_inner,k_inner + n_slice_on_each_core -1 );
+#   else
+            printf ( "Paralleling %d to %d on mic\n", k_inner,k_inner + n_slice_on_each_core -1 );
+#   endif
 #endif
             for(int k_real = k_inner; k_real< n_slice_on_each_core + k_inner ; ++k_real){
                 calc_single_slice(
@@ -466,7 +498,13 @@ void calc_single_l (
                     );
 
     }else{
-
+#ifdef SHOW_NORMAL_OUTPUT
+#   ifndef __MIC__
+            printf ( "Normal %d to %d on cpu\n", k_begin,k_end );
+#   else
+            printf ( "Normal %d to %d on mic\n", k_begin,k_end );
+#   endif
+#endif
         for (int k = k_begin; k < k_end; ++k )
             calc_single_slice(
                         i_begin, i_end, j_begin, j_end, k,
@@ -479,22 +517,74 @@ void calc_single_l (
                     );
     }
 
-    for ( int k = k_begin; k < k_end; k++ )
-        for ( int j = j_begin; j < j_end; j++ )
-            for ( int i = i_begin; i < i_end; i++ ) {
-                int nIndex              = POSITION_INDEX_X ( k, j, i );
+    //Gather all
 
-                up_inner[nIndex] += ( 2 * up_inner1[nIndex] - up_inner2[nIndex] );
-                vp_inner[nIndex] += ( 2 * vp_inner1[nIndex] - vp_inner2[nIndex] );
-                wp_inner[nIndex] += ( 2 * wp_inner1[nIndex] - wp_inner2[nIndex] );
-                us_inner[nIndex] += ( 2 * us_inner1[nIndex] - us_inner2[nIndex] );
-                vs_inner[nIndex] += ( 2 * vs_inner1[nIndex] - vs_inner2[nIndex] );
-                ws_inner[nIndex] += ( 2 * ws_inner1[nIndex] - ws_inner2[nIndex] );
-                u_inner[nIndex] = up_inner[nIndex] + us_inner[nIndex];
-                v_inner[nIndex] = vp_inner[nIndex] + vs_inner[nIndex];
-                w_inner[nIndex] = wp_inner[nIndex] + ws_inner[nIndex];
+    if(seperate_num > 1 && USE_OMP_PARALLEL){
+    // if(seperate_num > 1 && USE_OMP_PARALLEL){
 
-            }//for(i=nleft;i<nright;i++) end
+        #pragma omp parallel for
+        for (int k = k_begin ; k < k_end; k+= n_slice_on_each_core ) {
+            volatile int k_inner = k;
+#ifdef SHOW_NORMAL_OUTPUT
+#   ifndef __MIC__
+            printf ( "Paralleling gathering %d to %d on cpu\n", k_inner,k_inner + n_slice_on_each_core -1 );
+#   else
+            printf ( "Paralleling gathering %d to %d on mic\n", k_inner,k_inner + n_slice_on_each_core -1 );
+#   endif
+#endif
+            for(int k_real = k_inner; k_real< n_slice_on_each_core + k_inner ; ++k_real){
+                gather_single_slice ( i_begin, i_end, j_begin, j_end, k_real,
+                    up_inner  , up_inner1 , up_inner2 , vp_inner  , vp_inner1 ,
+                    vp_inner2 , wp_inner  , wp_inner1 , wp_inner2 , us_inner  ,
+                    us_inner1 , us_inner2 , vs_inner  , vs_inner1 , vs_inner2 ,
+                    ws_inner  , ws_inner1 , ws_inner2 , u_inner   , v_inner   , w_inner,
+                    nMicMaxXLength, nMicMaxYLength
+                    );
+            }
+        }
+
+        for (int k = n_slice_on_each_core * seperate_num; k < k_end; ++k )
+            gather_single_slice ( i_begin, i_end, j_begin, j_end, k,
+                up_inner  , up_inner1 , up_inner2 , vp_inner  , vp_inner1 ,
+                vp_inner2 , wp_inner  , wp_inner1 , wp_inner2 , us_inner  ,
+                us_inner1 , us_inner2 , vs_inner  , vs_inner1 , vs_inner2 ,
+                ws_inner  , ws_inner1 , ws_inner2 , u_inner   , v_inner   , w_inner,
+                nMicMaxXLength, nMicMaxYLength
+                );
+    }else{
+#ifdef SHOW_NORMAL_OUTPUT
+#   ifndef __MIC__
+            printf ( "Normal gathering %d to %d on cpu\n", k_begin,k_end );
+#   else
+            printf ( "Normal gathering %d to %d on mic\n", k_begin,k_end );
+#   endif
+#endif
+        for (int k = k_begin; k < k_end; ++k )
+            gather_single_slice ( i_begin, i_end, j_begin, j_end, k,
+                up_inner  , up_inner1 , up_inner2 , vp_inner  , vp_inner1 ,
+                vp_inner2 , wp_inner  , wp_inner1 , wp_inner2 , us_inner  ,
+                us_inner1 , us_inner2 , vs_inner  , vs_inner1 , vs_inner2 ,
+                ws_inner  , ws_inner1 , ws_inner2 , u_inner   , v_inner   , w_inner,
+                nMicMaxXLength, nMicMaxYLength
+                );
+    }
+
+    // for ( int k = k_begin; k < k_end; k++ )
+    //     for ( int j = j_begin; j < j_end; j++ )
+    //         for ( int i = i_begin; i < i_end; i++ ) {
+    //             int nIndex              = POSITION_INDEX_X ( k, j, i );
+
+    //             up_inner[nIndex] += ( 2 * up_inner1[nIndex] - up_inner2[nIndex] );
+    //             vp_inner[nIndex] += ( 2 * vp_inner1[nIndex] - vp_inner2[nIndex] );
+    //             wp_inner[nIndex] += ( 2 * wp_inner1[nIndex] - wp_inner2[nIndex] );
+    //             us_inner[nIndex] += ( 2 * us_inner1[nIndex] - us_inner2[nIndex] );
+    //             vs_inner[nIndex] += ( 2 * vs_inner1[nIndex] - vs_inner2[nIndex] );
+    //             ws_inner[nIndex] += ( 2 * ws_inner1[nIndex] - ws_inner2[nIndex] );
+    //             u_inner[nIndex] = up_inner[nIndex] + us_inner[nIndex];
+    //             v_inner[nIndex] = vp_inner[nIndex] + vs_inner[nIndex];
+    //             w_inner[nIndex] = wp_inner[nIndex] + ws_inner[nIndex];
+
+    //         }//for(i=nleft;i<nright;i++) end
 
 }
 
