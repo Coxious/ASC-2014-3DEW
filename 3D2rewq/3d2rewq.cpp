@@ -13,7 +13,10 @@
 
 //#define SHOW_NORMAL_OUTPUT
 
-#define USE_OMP_PARALLEL                true
+#define USE_OMP_PARALLEL_CALC                false
+
+#define USE_OMP_PARALLEL_GATHER              false
+
 
 #define SHOW_NORMAL_OUTPUT
 
@@ -27,7 +30,7 @@
 
 #define OUT_PUT_SLICE_Z_INDEX           169
 
-#define USE_MIC_MAX_LENGTH_THRESHOLD    100000
+#define USE_MIC_MAX_LENGTH_THRESHOLD    100
 
 #ifdef __MIC__
 
@@ -39,7 +42,7 @@
 
 #endif
 
-#define MIC_CPU_RATE    0.4
+#define MIC_CPU_RATE    0.25
 
 #define MIC_COUNT       1
 
@@ -470,7 +473,7 @@ void calc_single_l (
 
     const int n_slice_on_each_core = (k_end - k_begin) / seperate_num;
 
-    if(seperate_num > 1 ){
+    if(seperate_num > 1 && USE_OMP_PARALLEL_CALC){
 
         #pragma omp parallel for
         for (int k = k_begin ; k < k_end; k+= n_slice_on_each_core ) {
@@ -530,8 +533,8 @@ void calc_single_l (
 
     //Gather all
 
-    if(seperate_num > 1 ){
-        #pragma omp parallel for
+    if(seperate_num > 1 && USE_OMP_PARALLEL_GATHER ){
+        // #pragma omp parallel for
         for (int k = k_begin ; k < k_end; k+= n_slice_on_each_core ) {
             volatile int k_inner = k;
 
