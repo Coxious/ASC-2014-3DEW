@@ -13,7 +13,7 @@
 
 //#define SHOW_NORMAL_OUTPUT
 
-#define USE_OMP_PARALLEL                false
+#define USE_OMP_PARALLEL                true
 
 #define SHOW_NORMAL_OUTPUT
 
@@ -27,7 +27,7 @@
 
 #define OUT_PUT_SLICE_Z_INDEX           169
 
-#define USE_MIC_MAX_LENGTH_THRESHOLD    100
+#define USE_MIC_MAX_LENGTH_THRESHOLD    100000
 
 #ifdef __MIC__
 
@@ -276,7 +276,6 @@ void initailize() {
 //  return sum;
 // }
 
-
 MIC_VAR
 inline
 void gather_single_slice ( const int i_begin, const int i_end, const int j_begin, const int j_end, const int k,
@@ -286,9 +285,20 @@ void gather_single_slice ( const int i_begin, const int i_end, const int j_begin
         double * ws_inner  , double * ws_inner1 , double * ws_inner2 , double * u_inner   , double * v_inner   , double * w_inner,
         const int nMicMaxXLength, const int nMicMaxYLength)
 {
+    volatile int nIndex;
+    // printf("k %d\n",k);
+    // printf(" %d i_begin, %d i_end, %d j_begin, %d j_end, %d k,%p up_inner  , %p up_inner1 , %p up_inner2 , %p vp_inner  , %p vp_inner1 ,%p vp_inner2 , %p wp_inner  , %p wp_inner1 , %p wp_inner2 , %p us_inner  , %p us_inner1 , %p us_inner2 , %p vs_inner  , %p vs_inner1 , %p vs_inner2 ,%p ws_inner  , %p ws_inner1 , %p ws_inner2 , %p u_inner   , %p v_inner   , %p w_inner,%d nMicMaxXLength, %d nMicMaxYLength\n",
+    //     i_begin, i_end, j_begin, j_end, k,
+    //     up_inner  , up_inner1 , up_inner2 , vp_inner  , vp_inner1 ,
+    //     vp_inner2 , wp_inner  , wp_inner1 , wp_inner2 , us_inner  ,
+    //     us_inner1 , us_inner2 , vs_inner  , vs_inner1 , vs_inner2 ,
+    //     ws_inner  , ws_inner1 , ws_inner2 , u_inner   , v_inner   , w_inner,
+    //     nMicMaxXLength, nMicMaxYLength);
+
     for ( int j = j_begin; j < j_end; j++ )
         for ( int i = i_begin; i < i_end; i++ ) {
-            int nIndex              = POSITION_INDEX_X ( k, j, i );
+            nIndex = POSITION_INDEX_X(k,j,i);
+            // printf("%d nIndex\n",nIndex);
 
             up_inner[nIndex] += ( 2 * up_inner1[nIndex] - up_inner2[nIndex] );
             vp_inner[nIndex] += ( 2 * vp_inner1[nIndex] - vp_inner2[nIndex] );
@@ -460,19 +470,19 @@ void calc_single_l (
 
     const int n_slice_on_each_core = (k_end - k_begin) / seperate_num;
 
-    if(seperate_num > 1 && USE_OMP_PARALLEL){
+    if(seperate_num > 1 ){
 
         #pragma omp parallel for
         for (int k = k_begin ; k < k_end; k+= n_slice_on_each_core ) {
             volatile int k_inner = k;
 
-#ifdef SHOW_NORMAL_OUTPUT
-#   ifndef __MIC__
-            printf ( "Paralleling %d to %d on cpu\n", k_inner,k_inner + n_slice_on_each_core -1 );
-#   else
-            printf ( "Paralleling %d to %d on mic\n", k_inner,k_inner + n_slice_on_each_core -1 );
-#   endif
-#endif
+// #ifdef SHOW_NORMAL_OUTPUT
+// #   ifndef __MIC__
+//             printf ( "Paralleling %d to %d on cpu\n", k_inner,k_inner + n_slice_on_each_core -1 );
+// #   else
+//             printf ( "Paralleling %d to %d on mic\n", k_inner,k_inner + n_slice_on_each_core -1 );
+// #   endif
+// #endif
             for(int k_real = k_inner; k_real< n_slice_on_each_core + k_inner ; ++k_real){
                 calc_single_slice(
                     i_begin, i_end, j_begin, j_end, k_real,
@@ -486,7 +496,7 @@ void calc_single_l (
             }
         }
 
-        for (int k = n_slice_on_each_core * seperate_num; k < k_end; ++k )
+        for (int k = k_begin + n_slice_on_each_core * seperate_num; k < k_end; ++k )
             calc_single_slice(
                         i_begin, i_end, j_begin, j_end, k,
                         up_inner  , up_inner1 , up_inner2 , vp_inner  , vp_inner1 ,
@@ -498,13 +508,14 @@ void calc_single_l (
                     );
 
     }else{
-#ifdef SHOW_NORMAL_OUTPUT
-#   ifndef __MIC__
-            printf ( "Normal %d to %d on cpu\n", k_begin,k_end );
-#   else
-            printf ( "Normal %d to %d on mic\n", k_begin,k_end );
-#   endif
-#endif
+
+// #ifdef SHOW_NORMAL_OUTPUT
+// #   ifndef __MIC__
+//             printf ( "Normal %d to %d on cpu\n", k_begin,k_end );
+// #   else
+//             printf ( "Normal %d to %d on mic\n", k_begin,k_end );
+// #   endif
+// #endif
         for (int k = k_begin; k < k_end; ++k )
             calc_single_slice(
                         i_begin, i_end, j_begin, j_end, k,
@@ -519,19 +530,19 @@ void calc_single_l (
 
     //Gather all
 
-    if(seperate_num > 1 && USE_OMP_PARALLEL){
-    // if(seperate_num > 1 && USE_OMP_PARALLEL){
-
+    if(seperate_num > 1 ){
         #pragma omp parallel for
         for (int k = k_begin ; k < k_end; k+= n_slice_on_each_core ) {
             volatile int k_inner = k;
-#ifdef SHOW_NORMAL_OUTPUT
-#   ifndef __MIC__
-            printf ( "Paralleling gathering %d to %d on cpu\n", k_inner,k_inner + n_slice_on_each_core -1 );
-#   else
-            printf ( "Paralleling gathering %d to %d on mic\n", k_inner,k_inner + n_slice_on_each_core -1 );
-#   endif
-#endif
+
+// #ifdef SHOW_NORMAL_OUTPUT
+// #   ifndef __MIC__
+//             printf ( "Paralleling gathering %d to %d on cpu\n", k_inner,k_inner + n_slice_on_each_core -1 );
+// #   else
+//             printf ( "Paralleling gathering %d to %d on mic\n", k_inner,k_inner + n_slice_on_each_core -1 );
+// #   endif
+// #endif
+
             for(int k_real = k_inner; k_real< n_slice_on_each_core + k_inner ; ++k_real){
                 gather_single_slice ( i_begin, i_end, j_begin, j_end, k_real,
                     up_inner  , up_inner1 , up_inner2 , vp_inner  , vp_inner1 ,
@@ -543,30 +554,32 @@ void calc_single_l (
             }
         }
 
-        for (int k = n_slice_on_each_core * seperate_num; k < k_end; ++k )
-            gather_single_slice ( i_begin, i_end, j_begin, j_end, k,
-                up_inner  , up_inner1 , up_inner2 , vp_inner  , vp_inner1 ,
-                vp_inner2 , wp_inner  , wp_inner1 , wp_inner2 , us_inner  ,
-                us_inner1 , us_inner2 , vs_inner  , vs_inner1 , vs_inner2 ,
-                ws_inner  , ws_inner1 , ws_inner2 , u_inner   , v_inner   , w_inner,
-                nMicMaxXLength, nMicMaxYLength
-                );
+        for (int k = k_begin + n_slice_on_each_core * seperate_num; k < k_end; ++k )
+                gather_single_slice ( i_begin, i_end, j_begin, j_end, k,
+                    up_inner  , up_inner1 , up_inner2 , vp_inner  , vp_inner1 ,
+                    vp_inner2 , wp_inner  , wp_inner1 , wp_inner2 , us_inner  ,
+                    us_inner1 , us_inner2 , vs_inner  , vs_inner1 , vs_inner2 ,
+                    ws_inner  , ws_inner1 , ws_inner2 , u_inner   , v_inner   , w_inner,
+                    nMicMaxXLength, nMicMaxYLength
+                    );
     }else{
-#ifdef SHOW_NORMAL_OUTPUT
-#   ifndef __MIC__
-            printf ( "Normal gathering %d to %d on cpu\n", k_begin,k_end );
-#   else
-            printf ( "Normal gathering %d to %d on mic\n", k_begin,k_end );
-#   endif
-#endif
+
+// #ifdef SHOW_NORMAL_OUTPUT
+// #   ifndef __MIC__
+//             printf ( "Normal gathering %d to %d on cpu\n", k_begin,k_end );
+// #   else
+//             printf ( "Normal gathering %d to %d on mic\n", k_begin,k_end );
+// #   endif
+// #endif
         for (int k = k_begin; k < k_end; ++k )
-            gather_single_slice ( i_begin, i_end, j_begin, j_end, k,
-                up_inner  , up_inner1 , up_inner2 , vp_inner  , vp_inner1 ,
-                vp_inner2 , wp_inner  , wp_inner1 , wp_inner2 , us_inner  ,
-                us_inner1 , us_inner2 , vs_inner  , vs_inner1 , vs_inner2 ,
-                ws_inner  , ws_inner1 , ws_inner2 , u_inner   , v_inner   , w_inner,
-                nMicMaxXLength, nMicMaxYLength
-                );
+                gather_single_slice ( i_begin, i_end, j_begin, j_end, k,
+                    up_inner  , up_inner1 , up_inner2 , vp_inner  , vp_inner1 ,
+                    vp_inner2 , wp_inner  , wp_inner1 , wp_inner2 , us_inner  ,
+                    us_inner1 , us_inner2 , vs_inner  , vs_inner1 , vs_inner2 ,
+                    ws_inner  , ws_inner1 , ws_inner2 , u_inner   , v_inner   , w_inner,
+                    nMicMaxXLength, nMicMaxYLength
+                    );
+
     }
 
     // for ( int k = k_begin; k < k_end; k++ )
