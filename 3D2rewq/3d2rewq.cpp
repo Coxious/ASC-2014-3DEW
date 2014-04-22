@@ -31,15 +31,15 @@
 
 #ifdef __MIC__
 
-#define USE_OMP_MAX_LENGTH_THRESHOLD    10
+#define USE_OMP_SLICES_ON_EACH_CORE_MIN     10
 
 #else
 
-#define USE_OMP_MAX_LENGTH_THRESHOLD    10
+#define USE_OMP_SLICES_ON_EACH_CORE_MIN    10
 
 #endif
 
-#define MIC_CPU_RATE    0.1
+#define MIC_CPU_RATE    0.2
 
 #define MIC_COUNT       1
 
@@ -423,25 +423,25 @@ void calc_single_l (
         const int nMicMaxXLength, const int nMicMaxYLength, const int ntop, const int nleft, const int nfront, const int ncz_shot_new, const int l_inner,
         const int ncy_shot_inner,const int ncx_shot_inner,const double c0_inner ,const double dtx_inner,const double dtz_inner
         ) {
-
-    bool print_debug_info = (nMicMaxXLength >= USE_MIC_MAX_LENGTH_THRESHOLD && k_begin == 5);
-
 //    int n_slice_on_each_core = (k_end - k_begin) / omp_get_num_procs();
 
-    const int seperate_num = 8;
+    const int seperate_current = (k_end - k_begin)/USE_OMP_SLICES_ON_EACH_CORE_MIN;
+
+    const int seperate_max = omp_get_num_procs();
+
+    const int seperate_num = seperate_current < seperate_max ? seperate_current : seperate_max ;
 
     const int n_slice_on_each_core = (k_end - k_begin) / seperate_num;
 
-    if(n_slice_on_each_core >= USE_OMP_MAX_LENGTH_THRESHOLD){
+    if(seperate_num > 1){
 
-        // #pragma omp parallel for private(k)
-        // for(int i = 0;i<seperate_num;++i)
         #pragma omp parallel for
         for (int k = k_begin ; k < k_end; k+= n_slice_on_each_core ) {
             volatile int k_inner = k;
-            //printf("Start parallel k %d to %d......\n",k_inner,k_inner+n_slice_on_each_core);
+#ifdef SHOW_NORMAL_OUTPUT
+            printf ( "Paralleling %d to %d\n", k_inner,k_inner + n_slice_on_each_core -1 );
+#endif
             for(int k_real = k_inner; k_real< n_slice_on_each_core + k_inner ; ++k_real){
-                // printf("Running k %d\n",k_real);
                 calc_single_slice(
                     i_begin, i_end, j_begin, j_end, k_real,
                     up_inner  , up_inner1 , up_inner2 , vp_inner  , vp_inner1 ,
@@ -784,7 +784,7 @@ void calc_shot (
         mic_z_each_length = MIC_MAX_OFFLOAD_BYTES / mic_slice_size;
 
         printf("[-]Unable to offload %d slices for too large. Now offload %.2f of total for each mic, %d slices\n",
-            MIC_CPU_RATE * nMicMaxZLength,mic_z_each_length * 1. / nMicMaxZLength, mic_z_each_length);
+            (int)(MIC_CPU_RATE * nMicMaxZLength),mic_z_each_length * 1. / nMicMaxZLength, mic_z_each_length);
     }
 
     int mic_z_total_length = MIC_COUNT * mic_z_each_length;
@@ -875,8 +875,7 @@ void calc_shot (
             k_end = k_mic_begin;
              k_mic_end = n_mic_top - ntop +nMicZLength +5;
 #ifdef SHOW_NORMAL_OUTPUT
-            printf("%d %d\n", k_begin, k_end);
-            printf ( "l %d started mic nMicMaxLength %d %d %d\n", l, nMicXLength, nMicYLength, nMicZLength );
+            printf ( "l %d started mic %d %d nMicMaxLength %d %d %d\n", l,k_begin, k_end, nMicXLength, nMicYLength, nMicZLength );
 #endif
 
             for(int i_mic=0;i_mic<MIC_COUNT;++i_mic){
