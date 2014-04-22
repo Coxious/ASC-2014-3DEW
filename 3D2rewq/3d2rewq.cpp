@@ -23,13 +23,15 @@
 // #    define  CORE_NUM 8
 // #endif
 
+#define MIC_MAX_OFFLOAD_BYTES           1024*1024*7
+
 #define OUT_PUT_SLICE_Z_INDEX           169
 
-#define USE_MIC_MAX_LENGTH_THRESHOLD    10000
+#define USE_MIC_MAX_LENGTH_THRESHOLD    100
 
 #ifdef __MIC__
 
-#define USE_OMP_MAX_LENGTH_THRESHOLD    10000
+#define USE_OMP_MAX_LENGTH_THRESHOLD    10
 
 #else
 
@@ -37,7 +39,7 @@
 
 #endif
 
-#define MIC_CPU_RATE    0.25
+#define MIC_CPU_RATE    0.1
 
 #define MIC_COUNT       1
 
@@ -777,6 +779,13 @@ void calc_shot (
     double * mic_exchange_part_w[MIC_COUNT+1][2];
 
     int mic_z_each_length = MIC_CPU_RATE * nMicMaxZLength;
+
+    if(mic_z_each_length * mic_slice_size > MIC_MAX_OFFLOAD_BYTES){
+        mic_z_each_length = MIC_MAX_OFFLOAD_BYTES / mic_slice_size;
+
+        printf("[-]Unable to offload %d slices for too large. Now offload %.2f of total for each mic, %d slices\n",
+            MIC_CPU_RATE * nMicMaxZLength,mic_z_each_length * 1. / nMicMaxZLength, mic_z_each_length);
+    }
 
     int mic_z_total_length = MIC_COUNT * mic_z_each_length;
 
