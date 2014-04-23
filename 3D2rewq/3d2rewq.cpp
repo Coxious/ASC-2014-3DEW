@@ -1,5 +1,5 @@
+#include "mpi.h"
 #include <stdio.h>
-#include <malloc.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,6 +29,10 @@
 #define MIC_MAX_OFFLOAD_BYTES           1024*1024*7
 
 #define OUT_PUT_SLICE_Z_INDEX           169
+
+// MPI PARAMATER
+#define MAX_GROUP_SIZE 4
+#define SPLIT_THRESHOLD 80
 
 #define USE_MIC_MAX_LENGTH_THRESHOLD    100
 
@@ -105,7 +109,7 @@ typedef struct _MEMORY_BLOCKS {
 
 MIC_VAR int ncy_shot, ncx_shot;
 
-int nshot,ishot;
+int nshot,ishot, total_sum = 0;
 double t0, tt;
 
 MIC_VAR double *wave;
@@ -138,89 +142,114 @@ double *up_out;
 
 bool init_mic_flag[MIC_COUNT];
 
-void initailize() {
-    strcpy ( tmp, "date " );
-    strncat ( tmp, ">> ", 3 );
-    strncat ( tmp, logfile, strlen ( logfile ) );
-    flog = fopen ( logfile, "w" );
-    fprintf ( flog, "------------start time------------\n" );
-    fclose ( flog );
-    system ( tmp );
-    gettimeofday ( &start, NULL );
+double fbuf[4];
+int buf[14];
+int mpi_sum, mpi_id;
+const int root_id = 0;
+int group_size, group_id, core_remain, group_limit, group_begin, group_end,  group_pos;
+bool l_parallel;
 
-    fin = fopen ( infile, "r" );
-    if ( fin == NULL ) {
-        printf ( "file %s is  not exist\n", infile );
-        exit ( 0 );
-    }
-    fscanf ( fin, "nx=%d\n", &nx );
-    fscanf ( fin, "ny=%d\n", &ny );
-    fscanf ( fin, "nz=%d\n", &nz );
-    fscanf ( fin, "lt=%d\n", &lt );
-    fscanf ( fin, "nedge=%d\n", &nedge );
-    fscanf ( fin, "ncx_shot1=%d\n", &ncx_shot1 );
-    fscanf ( fin, "ncy_shot1=%d\n", &ncy_shot1 );
-    fscanf ( fin, "ncz_shot=%d\n", &ncz_shot );
-    fscanf ( fin, "nxshot=%d\n", &nxshot );
-    fscanf ( fin, "nyshot=%d\n", &nyshot );
-    fscanf ( fin, "frequency=%lf\n", &frequency );
-    fscanf ( fin, "velmax=%lf\n", &velmax );
-    fscanf ( fin, "dt=%lf\n", &dt );
-    fscanf ( fin, "unit=%lf\n", &unit );
-    fscanf ( fin, "dxshot=%d\n", &dxshot );
-    fscanf ( fin, "dyshot=%d\n", &dyshot );
-    fclose ( fin );
+void initailize() {
+    if(mpi_id == root_id) {
+        strcpy ( tmp, "date " );
+        strncat ( tmp, ">> ", 3 );
+        strncat ( tmp, logfile, strlen ( logfile ) );
+        flog = fopen ( logfile, "w" );
+        fprintf ( flog, "------------start time------------\n" );
+        fclose ( flog );
+        system ( tmp );
+        gettimeofday ( &start, NULL );
+
+        fin = fopen ( infile, "r" );
+        if ( fin == NULL ) {
+            printf ( "file %s is  not exist\n", infile );
+
+            exit ( 0 );
+        }
+        fscanf ( fin, "nx=%d\n", &nx );
+        fscanf ( fin, "ny=%d\n", &ny );
+        fscanf ( fin, "nz=%d\n", &nz );
+        fscanf ( fin, "lt=%d\n", &lt );
+        fscanf ( fin, "nedge=%d\n", &nedge );
+        fscanf ( fin, "ncx_shot1=%d\n", &ncx_shot1 );
+        fscanf ( fin, "ncy_shot1=%d\n", &ncy_shot1 );
+        fscanf ( fin, "ncz_shot=%d\n", &ncz_shot );
+        fscanf ( fin, "nxshot=%d\n", &nxshot );
+        fscanf ( fin, "nyshot=%d\n", &nyshot );
+        fscanf ( fin, "frequency=%lf\n", &frequency );
+        fscanf ( fin, "velmax=%lf\n", &velmax );
+        fscanf ( fin, "dt=%lf\n", &dt );
+        fscanf ( fin, "unit=%lf\n", &unit );
+        fscanf ( fin, "dxshot=%d\n", &dxshot );
+        fscanf ( fin, "dyshot=%d\n", &dyshot );
+        fclose ( fin );
+        buf[2] = nx;buf[3] = ny; buf[4] = nz; buf[5] = lt; buf[6] = nedge; buf[7] = ncx_shot1;
+        buf[8] = ncy_shot1; buf[9] = ncz_shot; buf[10] = nxshot; buf[11] = nyshot;
+        buf[12] = dxshot; buf[13] = dyshot;
+        fbuf[0] = frequency; fbuf[1] = velmax; fbuf[2] = dt; fbuf[3] = unit;
 
 #ifdef SHOW_NORMAL_OUTPUT
-    printf ( "\n--------workload parameter--------\n" );
-    printf ( "nx=%d\n", nx );
-    printf ( "ny=%d\n", ny );
-    printf ( "nz=%d\n", nz );
-    printf ( "lt=%d\n", lt );
-    printf ( "nedge=%d\n", nedge );
-    printf ( "ncx_shot1=%d\n", ncx_shot1 );
-    printf ( "ncy_shot1=%d\n", ncy_shot1 );
-    printf ( "ncz_shot=%d\n", ncz_shot );
-    printf ( "nxshot=%d\n", nxshot );
-    printf ( "nyshot=%d\n", nyshot );
-    printf ( "frequency=%lf\n", frequency );
-    printf ( "velmax=%lf\n", velmax );
-    printf ( "dt=%lf\n", dt );
-    printf ( "unit=%lf\n", unit );
-    printf ( "dxshot=%d\n", dxshot );
-    printf ( "dyshot=%d\n\n", dyshot );
+        printf ( "\n--------workload parameter--------\n" );
+        printf ( "nx=%d\n", nx );
+        printf ( "ny=%d\n", ny );
+        printf ( "nz=%d\n", nz );
+        printf ( "lt=%d\n", lt );
+        printf ( "nedge=%d\n", nedge );
+        printf ( "ncx_shot1=%d\n", ncx_shot1 );
+        printf ( "ncy_shot1=%d\n", ncy_shot1 );
+        printf ( "ncz_shot=%d\n", ncz_shot );
+        printf ( "nxshot=%d\n", nxshot );
+        printf ( "nyshot=%d\n", nyshot );
+        printf ( "frequency=%lf\n", frequency );
+        printf ( "velmax=%lf\n", velmax );
+        printf ( "dt=%lf\n", dt );
+        printf ( "unit=%lf\n", unit );
+        printf ( "dxshot=%d\n", dxshot );
+        printf ( "dyshot=%d\n\n", dyshot );
 #endif
-    flog = fopen ( logfile, "a" );
-    fprintf ( flog, "\n--------workload parameter--------\n" );
-    fprintf ( flog, "nx=%d\n", nx );
-    fprintf ( flog, "ny=%d\n", ny );
-    fprintf ( flog, "nz=%d\n", nz );
-    fprintf ( flog, "lt=%d\n", lt );
-    fprintf ( flog, "nedge=%d\n", nedge );
-    fprintf ( flog, "ncx_shot1=%d\n", ncx_shot1 );
-    fprintf ( flog, "ncy_shot1=%d\n", ncy_shot1 );
-    fprintf ( flog, "ncz_shot=%d\n", ncz_shot );
-    fprintf ( flog, "nxshot=%d\n", nxshot );
-    fprintf ( flog, "nyshot=%d\n", nyshot );
-    fprintf ( flog, "frequency=%lf\n", frequency );
-    fprintf ( flog, "velmax=%lf\n", velmax );
-    fprintf ( flog, "dt=%lf\n", dt );
-    fprintf ( flog, "unit=%lf\n", unit );
-    fprintf ( flog, "dxshot=%d\n", dxshot );
-    fprintf ( flog, "dyshot=%d\n\n", dyshot );
-    fclose ( flog );
+        flog = fopen ( logfile, "a" );
+        fprintf ( flog, "\n--------workload parameter--------\n" );
+        fprintf ( flog, "nx=%d\n", nx );
+        fprintf ( flog, "ny=%d\n", ny );
+        fprintf ( flog, "nz=%d\n", nz );
+        fprintf ( flog, "lt=%d\n", lt );
+        fprintf ( flog, "nedge=%d\n", nedge );
+        fprintf ( flog, "ncx_shot1=%d\n", ncx_shot1 );
+        fprintf ( flog, "ncy_shot1=%d\n", ncy_shot1 );
+        fprintf ( flog, "ncz_shot=%d\n", ncz_shot );
+        fprintf ( flog, "nxshot=%d\n", nxshot );
+        fprintf ( flog, "nyshot=%d\n", nyshot );
+        fprintf ( flog, "frequency=%lf\n", frequency );
+        fprintf ( flog, "velmax=%lf\n", velmax );
+        fprintf ( flog, "dt=%lf\n", dt );
+        fprintf ( flog, "unit=%lf\n", unit );
+        fprintf ( flog, "dxshot=%d\n", dxshot );
+        fprintf ( flog, "dyshot=%d\n\n", dyshot );
+        fclose ( flog );
+}
 
+    MPI_Bcast(buf, 14, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(fbuf, 4, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    nx = buf[2]; ny = buf[3]; nz = buf[4]; lt = buf[5]; nedge = buf[6]; ncx_shot1 = buf[7];
+    ncy_shot1 = buf[8]; ncz_shot = buf[9]; nxshot = buf[10]; nyshot = buf[11];
+    dxshot = buf[12]; dyshot = buf[13];
+    frequency = fbuf[0]; velmax = fbuf[1]; dt = fbuf[2]; unit = fbuf[3];
     nSize = nz * ny * nx;
     nSliceSize = ny * nx;
+    nshot = nxshot * nyshot;
 
-    mic_used_size = pow ( 2.* ( ( lt * dt * velmax ) / unit + 10. ) + 10. + 1., 3. );
+    mic_used_size  = nx*ny*nz;
+    mic_slice_size = nx*ny;
+  /*   mic_used_size = pow ( 2.* ( ( lt * dt * velmax ) / unit + 10. ) + 10. + 1., 3. );
     mic_slice_size = pow ( 2.* ( ( lt * dt * velmax ) / unit + 10. ) + 10. + 1, 2. );
-
-    up_out = ( double * ) malloc ( mic_slice_size * sizeof ( double ) );
+ */
 
     wave = ( double* ) malloc ( sizeof ( double ) * lt );
 
     t0 = 1.0 / frequency;
+
+#pragma omp parallel for
     for ( int l = 0; l < lt; l++ ) {
         tt = l * dt;
         tt = tt - t0;
@@ -241,7 +270,7 @@ void initailize() {
     c[1][3] = -0.0099;
     c[1][4] = 0.0008;
 
-#pragma omp parallel for
+
     for ( int i = 0; i < 5; i++ )
         for ( int j = 0; j < 5; j++ )
             c[2 + i][j] = c[1][i] * c[1][j];
@@ -249,35 +278,9 @@ void initailize() {
     for(int i = 0;i<MIC_COUNT;++i){
         init_mic_flag[i] = false;
     }
-    // for ( int j = 0; j < 7; ++j ) {
-    //     for ( int i = 0; i < 5; ++i ) {
-    //         c[j][10 - i] = c[j][i];
-    //     }
-    //     c[j][5] = c0;
-    // }
+
 }
 
-// MIC_VAR double get_sum(double * data,
-//  int nMicMaxXLength,
-//  int nMicMaxYLength,
-//  int i_begin,
-//  int i_end,
-//  int j_begin,
-//  int j_end,
-//  int k_begin,
-//  int k_end
-//  )
-// {
-//    double sum = 0.0;
-//    for ( int k = k_begin - 5; k < k_end + 5; k++ ) {
-//         for ( int j = j_begin - 5 ; j < j_end + 5; j++ ) {
-//             for ( int i = i_begin - 5 ; i < i_end + 5 ; i++ ) {
-//                  sum += fabs(data[POSITION_INDEX_X ( k, j, i )]);
-//              }
-//          }
-//      }
-//  return sum;
-// }
 
 MIC_VAR
 inline
@@ -646,21 +649,77 @@ void calc_single_l_offload_to_mic(
         }
 }
 
+
 void calc_shot (
         int ncx_shot,
         int ncy_shot,
-        int lStart, int lEnd,
+        int lStart, int lEnd, int lMax,
         PMEMORY_BLOCKS pMemBlocks
         ) {
 
-    int i_begin, i_end, j_begin, j_end, k_begin, k_end, k_mic_begin, k_mic_end;
+    int i_begin, i_end, j_begin, j_end, k_begin, k_end;
     int nMicXLength, nMicYLength, nMicZLength;
     int nMicMaxXLength, nMicMaxYLength, nMicMaxZLength;
 
     int n_mic_left, n_mic_right, n_mic_front, n_mic_back, n_mic_top, n_mic_bottom;
 
-    double * to_write   = pMemBlocks->to_write;
-    double * up_out     = ( ( double * ) malloc ( mic_slice_size * sizeof ( double ) ) );
+    double * to_write = pMemBlocks->to_write;
+    double * up_out;
+
+    double * up  = pMemBlocks->up;
+    double * up1 = pMemBlocks->up1;
+    double * up2 = pMemBlocks->up2;
+    double * vp  = pMemBlocks->vp;
+    double * vp1 = pMemBlocks->vp1;
+    double * vp2 = pMemBlocks->vp2;
+    double * wp  = pMemBlocks->wp;
+    double * wp1 = pMemBlocks->wp1;
+    double * wp2 = pMemBlocks->wp2;
+    double * us  = pMemBlocks->us;
+    double * us1 = pMemBlocks->us1;
+    double * us2 = pMemBlocks->us2;
+    double * vs  = pMemBlocks->vs;
+    double * vs1 = pMemBlocks->vs1;
+    double * vs2 = pMemBlocks->vs2;
+    double * ws  = pMemBlocks->ws;
+    double * ws1 = pMemBlocks->ws1;
+    double * ws2 = pMemBlocks->ws2;
+    double * u   = pMemBlocks->u;
+    double * v   = pMemBlocks->v;
+    double * w   = pMemBlocks->w;
+
+    int ncz_shot_shaddow = ncz_shot;
+    double xmax = lMax * dt * velmax;
+    int nleft = ncx_shot - xmax / unit - 10;
+    int nright = ncx_shot + xmax / unit + 10;
+    int nfront = ncy_shot - xmax / unit - 10;
+    int nback = ncy_shot + xmax / unit + 10;
+    int ntop = ncz_shot - xmax / unit - 10;
+    int nbottom = ncz_shot + xmax / unit + 10;
+
+    ntop = ntop - 1;
+    nfront = nfront - 1;
+    nleft = nleft - 1;
+
+    if ( nleft < 5 ) nleft = 5;
+    if ( nright > nx - 5 ) nright = nx - 5;
+    if ( nfront < 5 ) nfront = 5;
+    if ( nback > ny - 5 ) nback = ny - 5;
+    if ( ntop < 5 ) ntop = 5;
+    if ( nbottom > nz - 5 ) nbottom = nz - 5;
+
+    nMicMaxXLength = nright  - nleft;
+    nMicMaxYLength = nback   - nfront;
+    nMicMaxZLength = nbottom - ntop;
+
+    int k_begin_n , k_end_n ,k_length_to_calc;
+
+//  MIC CODE
+    int k_length_to_calc;
+    int mic_z_each_length;
+    int mic_z_total_length;
+    int cpu_z_length;
+    int k_mic_begin;
 
     double * mic_up [MIC_COUNT];
     double * mic_up1[MIC_COUNT];
@@ -684,104 +743,55 @@ void calc_shot (
     double * mic_v  [MIC_COUNT];
     double * mic_w  [MIC_COUNT];
 
-    double * up  = pMemBlocks->up;
-    double * up1 = pMemBlocks->up1;
-    double * up2 = pMemBlocks->up2;
-    double * vp  = pMemBlocks->vp;
-    double * vp1 = pMemBlocks->vp1;
-    double * vp2 = pMemBlocks->vp2;
-    double * wp  = pMemBlocks->wp;
-    double * wp1 = pMemBlocks->wp1;
-    double * wp2 = pMemBlocks->wp2;
-    double * us  = pMemBlocks->us;
-    double * us1 = pMemBlocks->us1;
-    double * us2 = pMemBlocks->us2;
-    double * vs  = pMemBlocks->vs;
-    double * vs1 = pMemBlocks->vs1;
-    double * vs2 = pMemBlocks->vs2;
-    double * ws  = pMemBlocks->ws;
-    double * ws1 = pMemBlocks->ws1;
-    double * ws2 = pMemBlocks->ws2;
-    double * u   = pMemBlocks->u;
-    double * v   = pMemBlocks->v;
-    double * w   = pMemBlocks->w;
-    double * mic_upout;
-    int copy_length ;
-    int ncz_shot_shadow = ncz_shot;
-    int mic_slice_size_shadow = mic_slice_size;
-    double xmax = lEnd * dt * velmax;
-    int nleft = ncx_shot - xmax / unit - 10;
-    int nright = ncx_shot + xmax / unit + 10;
-    int nfront = ncy_shot - xmax / unit - 10;
-    int nback = ncy_shot + xmax / unit + 10;
-    int ntop = ncz_shot - xmax / unit - 10;
-    int nbottom = ncz_shot + xmax / unit + 10;
-
-    int ncy_shot_shadow = ncy_shot;
-    int ncx_shot_shadow = ncx_shot;
-    int c0_shadow       = c0;
-    int dtx_shadow      = dtx;
-    int dtz_shadow      = dtz;
-
-//#pragma offload_transfer target(mic:0) in(dtx) in(dtz) in(ncy_shot) in(ncx_shot)
-
-    ntop = ntop - 1;
-    nfront = nfront - 1;
-    nleft = nleft - 1;
-
-    if ( nleft < 5 ) nleft = 5;
-    if ( nright > nx - 5 ) nright = nx - 5;
-    if ( nfront < 5 ) nfront = 5;
-    if ( nback > ny - 5 ) nback = ny - 5;
-    if ( ntop < 5 ) ntop = 5;
-    if ( nbottom > nz - 5 ) nbottom = nz - 5;
-
-    nMicMaxXLength = nright  - nleft;
-    nMicMaxYLength = nback   - nfront;
-    nMicMaxZLength = nbottom - ntop;
-
-    memset ( u  , 0, sizeof ( double ) *mic_used_size );
-    memset ( v  , 0, sizeof ( double ) *mic_used_size );
-    memset ( w  , 0, sizeof ( double ) *mic_used_size );
-    memset ( up , 0, sizeof ( double ) *mic_used_size );
-    memset ( up1, 0, sizeof ( double ) *mic_used_size );
-    memset ( up2, 0, sizeof ( double ) *mic_used_size );
-    memset ( vp , 0, sizeof ( double ) *mic_used_size );
-    memset ( vp1, 0, sizeof ( double ) *mic_used_size );
-    memset ( vp2, 0, sizeof ( double ) *mic_used_size );
-    memset ( wp , 0, sizeof ( double ) *mic_used_size );
-    memset ( wp1, 0, sizeof ( double ) *mic_used_size );
-    memset ( wp2, 0, sizeof ( double ) *mic_used_size );
-    memset ( us , 0, sizeof ( double ) *mic_used_size );
-    memset ( us1, 0, sizeof ( double ) *mic_used_size );
-    memset ( us2, 0, sizeof ( double ) *mic_used_size );
-    memset ( vs , 0, sizeof ( double ) *mic_used_size );
-    memset ( vs1, 0, sizeof ( double ) *mic_used_size );
-    memset ( vs2, 0, sizeof ( double ) *mic_used_size );
-    memset ( ws , 0, sizeof ( double ) *mic_used_size );
-    memset ( ws1, 0, sizeof ( double ) *mic_used_size );
-    memset ( ws2, 0, sizeof ( double ) *mic_used_size );
-
     double * mic_exchange_part_u[MIC_COUNT+1][2];
 
     double * mic_exchange_part_v[MIC_COUNT+1][2];
 
     double * mic_exchange_part_w[MIC_COUNT+1][2];
 
-    int mic_z_each_length = MIC_CPU_RATE * nMicMaxZLength;
+//  MIC CODE END
+
+    if( l_parallel ) {
+        int *a = (int *) calloc(group_size+1, sizeof(int));
+        int len = nMicMaxZLength / group_size;
+        int remain = nMicMaxZLength % group_size;
+        a[0] = 5;
+        for(int i = 1; i <= group_size; i++) {
+            if ( i < remain ) a[i] = a[i-1] + len + 1;
+            else a[i] = a[i-1] + len;
+        }
+        k_begin_n = a[group_pos]; k_end_n = a[group_pos+1];
+        free(a);
+
+
+// MIC CODE
+        k_length_to_calc = k_end_n - k_begin_n;
+
+    }else{
+        k_begin_n = 5;
+        k_length_to_calc = nMicMaxZLength;
+    }
+
+    mic_z_each_length = MIC_CPU_RATE * k_length_to_calc;
 
     if(mic_z_each_length * mic_slice_size > MIC_MAX_OFFLOAD_BYTES){
         mic_z_each_length = MIC_MAX_OFFLOAD_BYTES / mic_slice_size;
 
         printf("[-]Unable to offload %d slices for too large. Now offload %.2f of total for each mic, %d slices\n",
-            (int)(MIC_CPU_RATE * nMicMaxZLength),mic_z_each_length * 1. / nMicMaxZLength, mic_z_each_length);
+            (int)(MIC_CPU_RATE * k_length_to_calc),mic_z_each_length * 1. / k_length_to_calc, mic_z_each_length);
+    }else if(mic_z_each_length < 5){
+
+        mic_z_each_length = 5;
+
+        printf("[-]Unable to calc on mic with slice size less than 5. Adjust to 5 now as %.2f of all\n",
+            mic_z_each_length * 1. / k_length_to_calc);
     }
 
-    int mic_z_total_length = MIC_COUNT * mic_z_each_length;
+    mic_z_total_length = MIC_COUNT * mic_z_each_length;
 
-    int cpu_z_length = nMicMaxZLength - mic_z_total_length;
+    cpu_z_length = k_length_to_calc - mic_z_total_length;
 
-    k_mic_begin =5+cpu_z_length;
+    k_mic_begin =k_begin_n+cpu_z_length;
 
     for(int i = 0;i<MIC_COUNT;++i){
         mic_u[i] = &u[POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i,0, 0 )];
@@ -798,6 +808,8 @@ void calc_shot (
         mic_exchange_part_w[i][1] = ( double * ) calloc ( mic_slice_size * 5 , sizeof ( double ));
     }
 
+
+// MIC CODE END
     for ( int l = lStart; l <= lEnd; l++ ) {
         xmax = l * dt * velmax;
         n_mic_left = ncx_shot - xmax / unit - 10;
@@ -818,14 +830,9 @@ void calc_shot (
         if ( n_mic_top < 5 ) n_mic_top = 5;
         if ( n_mic_bottom > nz - 5 ) n_mic_bottom = nz - 5;
 
-        //
-        //  此处n_mic_XXX 系列变量同Host上的实际值相等。
-        //  此前申请控空间时已经考虑留出了5的边界
-        //  故此处循环应该从5开始。
-        //
-        nMicXLength = n_mic_right  - n_mic_left   ;
-        nMicYLength = n_mic_back   - n_mic_front  ;
-        nMicZLength = n_mic_bottom - n_mic_top    ;
+        nMicXLength = n_mic_right  - n_mic_left ;
+        nMicYLength = n_mic_back   - n_mic_front;
+        nMicZLength = n_mic_bottom - n_mic_top  ;
 
         i_begin = 5 + n_mic_left - nleft;
         i_end   = n_mic_left - nleft + nMicXLength + 5;
@@ -833,10 +840,43 @@ void calc_shot (
         j_begin = 5 + n_mic_front - nfront;
         j_end   = n_mic_front - nfront + nMicYLength + 5;
 
-        if ( nMicXLength < USE_MIC_MAX_LENGTH_THRESHOLD ) {
-            k_begin = 5 + n_mic_top - ntop;
-            k_end   = n_mic_top - ntop + nMicZLength + 5;
+        k_begin = 5 + n_mic_top - ntop;
+        k_end   = n_mic_top - ntop + nMicZLength + 5;
 
+        // mic_slice_size = (nMicMaxXLength +10) * (nMicMaxYLength + 10);
+
+        if ( l > SPLIT_THRESHOLD && l_parallel ) {
+            k_begin = k_begin_n;
+            k_end = k_end_n;
+
+            int exchangeSize = (nMicMaxXLength +10) * (nMicMaxYLength + 10) * 5;
+
+            int left = mpi_id!=group_begin ? mpi_id-1 : MPI_PROC_NULL;
+            int right = group_end!=mpi_id ? mpi_id+1 : MPI_PROC_NULL;
+
+            MPI_Status status;
+            // send to left and recieve from right
+            MPI_Sendrecv(&u[POSITION_INDEX_X(k_begin, 0, 0)], exchangeSize, MPI_DOUBLE, left, 1,
+                         &u[POSITION_INDEX_X(k_end  , 0, 0)], exchangeSize, MPI_DOUBLE, right, 1, MPI_COMM_WORLD, &status);
+            MPI_Sendrecv(&v[POSITION_INDEX_X(k_begin, 0, 0)], exchangeSize, MPI_DOUBLE, left, 1,
+                         &v[POSITION_INDEX_X(k_end  , 0, 0)], exchangeSize, MPI_DOUBLE, right, 1, MPI_COMM_WORLD, &status);
+            MPI_Sendrecv(&w[POSITION_INDEX_X(k_begin, 0, 0)], exchangeSize, MPI_DOUBLE, left, 1,
+                         &w[POSITION_INDEX_X(k_end  , 0, 0)], exchangeSize, MPI_DOUBLE, right, 1, MPI_COMM_WORLD, &status);
+
+            // send to right and recieve from left
+            MPI_Sendrecv(&u[POSITION_INDEX_X(k_end-5  , 0, 0)], exchangeSize, MPI_DOUBLE, right, 1,
+                         &u[POSITION_INDEX_X(k_begin-5, 0, 0)], exchangeSize, MPI_DOUBLE, left, 1, MPI_COMM_WORLD, &status);
+            MPI_Sendrecv(&v[POSITION_INDEX_X(k_end-5  , 0, 0)], exchangeSize, MPI_DOUBLE, right, 1,
+                         &v[POSITION_INDEX_X(k_begin-5, 0, 0)], exchangeSize, MPI_DOUBLE, left, 1, MPI_COMM_WORLD, &status);
+            MPI_Sendrecv(&w[POSITION_INDEX_X(k_end-5  , 0, 0)], exchangeSize, MPI_DOUBLE, right, 1,
+                         &w[POSITION_INDEX_X(k_begin-5, 0, 0)], exchangeSize, MPI_DOUBLE, left, 1, MPI_COMM_WORLD, &status);
+        }
+
+        printf("%d now start calc_single_l %d, k_begin %d k_end %d\n", mpi_id, l, k_begin, k_end);
+
+// MIC CODE
+
+        if ( nMicXLength < USE_MIC_MAX_LENGTH_THRESHOLD ) {
             //
             // Do normal way
             //
@@ -848,7 +888,7 @@ void calc_shot (
                     vp2 , wp  , wp1 , wp2 , us  ,
                     us1 , us2 , vs  , vs1 , vs2 ,
                     ws  , ws1 , ws2 , u   , v   , w,
-                    nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront, ncz_shot_shadow, l ,
+                    nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront, ncz_shot, l ,
                     ncy_shot,ncx_shot, c0 , dtx, dtz
                     );
 
@@ -861,13 +901,12 @@ void calc_shot (
             swap_temp = ws2; ws2 = ws1; ws1 = ws; ws = swap_temp;
         } else {
 
-            k_begin = 5 + n_mic_top - ntop;
+            k_mic_end = k_end;
             k_end = k_mic_begin;
-             k_mic_end = n_mic_top - ntop +nMicZLength +5;
+
 #ifdef SHOW_NORMAL_OUTPUT
             printf ( "l %d started mic %d %d nMicMaxLength %d %d %d\n", l,k_begin, k_end, nMicXLength, nMicYLength, nMicZLength );
 #endif
-
             for(int i_mic=0;i_mic<MIC_COUNT;++i_mic){
                 mic_up [i_mic] = &up [POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
                 mic_up1[i_mic] = &up1[POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
@@ -893,6 +932,10 @@ void calc_shot (
             memcpy(mic_exchange_part_v[0][0],mic_v[0],mic_slice_size*5*sizeof(double));
             memcpy(mic_exchange_part_w[0][0],mic_w[0],mic_slice_size*5*sizeof(double));
 
+            memcpy ( mic_exchange_part_u[MIC_COUNT][1] ,&(u[POSITION_INDEX_X(k_mic_end,0,0)]), sizeof ( double )* 5 * mic_slice_size );
+            memcpy ( mic_exchange_part_v[MIC_COUNT][1] ,&(v[POSITION_INDEX_X(k_mic_end,0,0)]), sizeof ( double )* 5 * mic_slice_size );
+            memcpy ( mic_exchange_part_w[MIC_COUNT][1] ,&(w[POSITION_INDEX_X(k_mic_end,0,0)]), sizeof ( double )* 5 * mic_slice_size );
+
             for(int i_mic=0;i_mic<MIC_COUNT;++i_mic){
                 if(5 + cpu_z_length + i_mic * mic_z_each_length < k_mic_end ){
                     calc_single_l_offload_to_mic(
@@ -901,7 +944,7 @@ void calc_shot (
                         mic_vp2[i_mic] ,  mic_wp [i_mic] ,  mic_wp1[i_mic] ,  mic_wp2[i_mic] ,  mic_us [i_mic] ,
                         mic_us1[i_mic] ,  mic_us2[i_mic] ,  mic_vs [i_mic] ,  mic_vs1[i_mic] ,  mic_vs2[i_mic] ,
                         mic_ws [i_mic] ,  mic_ws1[i_mic] ,  mic_ws2[i_mic] ,  mic_u  [i_mic] ,  mic_v  [i_mic] ,  mic_w[i_mic],
-                        nMicMaxXLength,  nMicMaxYLength,  ntop,  nleft,  nfront,  ncz_shot_shadow,  l,
+                        nMicMaxXLength,  nMicMaxYLength,  ntop,  nleft,  nfront,  ncz_shot,  l,
                         ncy_shot, ncx_shot, c0 , dtx, dtz ,  i_mic,
                         cpu_z_length + i_mic * mic_z_each_length ,mic_slice_size,
                         mic_exchange_part_u[i_mic][0] , mic_exchange_part_v[i_mic][0] , mic_exchange_part_w[i_mic][0],
@@ -939,10 +982,14 @@ void calc_shot (
             memcpy ( &(u[POSITION_INDEX_X(k_mic_begin,0,0)]), mic_exchange_part_u[0][1], sizeof ( double )* 5 * mic_slice_size );
             memcpy ( &(v[POSITION_INDEX_X(k_mic_begin,0,0)]), mic_exchange_part_v[0][1], sizeof ( double )* 5 * mic_slice_size );
             memcpy ( &(w[POSITION_INDEX_X(k_mic_begin,0,0)]), mic_exchange_part_w[0][1], sizeof ( double )* 5 * mic_slice_size );
-        }
-    }//for(l=1;l<=lt;l++) end
 
-//   s if( init_mic_flag == true)
+            memcpy ( &(u[POSITION_INDEX_X(k_mic_end-5,0,0)]), mic_exchange_part_u[MIC_COUNT][0], sizeof ( double )* 5 * mic_slice_size );
+            memcpy ( &(v[POSITION_INDEX_X(k_mic_end-5,0,0)]), mic_exchange_part_v[MIC_COUNT][0], sizeof ( double )* 5 * mic_slice_size );
+            memcpy ( &(w[POSITION_INDEX_X(k_mic_end-5,0,0)]), mic_exchange_part_w[MIC_COUNT][0], sizeof ( double )* 5 * mic_slice_size );
+        }
+
+    } //for(l=1;l<=lt;l++) end
+
     if(init_mic_flag[0] == true)
     {
         // copy_length = mic_slice_size * ( mic_z_length + 10 );
@@ -1013,17 +1060,70 @@ void calc_shot (
         }
     }
 
-    for ( int j = 5; j < nMicYLength + 5; j++ )
-        for ( int i = 5; i < nMicXLength + 5; i++ ) {
-            up_out[POSITION_INDEX_X ( 0, j, i )] = up1[POSITION_INDEX_X ( OUT_PUT_SLICE_Z_INDEX - ntop + 5, j, i )];
-        }
+// MIC CODE END
 
-    for ( int j = nfront; j < nback; j++ )
-        for ( int i = nleft; i < nright; i++ ) {
-            to_write[POSITION_INDEX_HOST_X ( 0, j, i )] = up_out[POSITION_INDEX_X ( 0, j + 5 - nfront, i + 5 - nleft )];
-        }
+    pMemBlocks->up    = up  ;
+    pMemBlocks->up1   = up1 ;
+    pMemBlocks->up2   = up2 ;
+    pMemBlocks->vp    = vp  ;
+    pMemBlocks->vp1   = vp1 ;
+    pMemBlocks->vp2   = vp2 ;
+    pMemBlocks->wp    = wp  ;
+    pMemBlocks->wp1   = wp1 ;
+    pMemBlocks->wp2   = wp2 ;
+    pMemBlocks->us    = us  ;
+    pMemBlocks->us1   = us1 ;
+    pMemBlocks->us2   = us2 ;
+    pMemBlocks->vs    = vs  ;
+    pMemBlocks->vs1   = vs1 ;
+    pMemBlocks->vs2   = vs2 ;
+    pMemBlocks->ws    = ws  ;
+    pMemBlocks->ws1   = ws1 ;
+    pMemBlocks->ws2   = ws2 ;
+    pMemBlocks->u     = u   ;
+    pMemBlocks->v     = v   ;
+    pMemBlocks->w     = w   ;
 
-    free ( up_out );
+    if ( l_parallel ) {
+        printf("%d's answer is at %d, calc in %d and %d\n", mpi_id, 169-ntop+5, k_begin_n, k_end_n);
+        if ( 169-ntop+5 >= k_begin_n && 169-ntop+5 < k_end_n ) {
+            up_out = ( double * ) calloc ( mic_slice_size , sizeof ( double ) );
+            for ( int j = 5; j < nMicYLength + 5; j++ )
+                for ( int i = 5; i < nMicXLength + 5; i++ ) {
+                    up_out[POSITION_INDEX_X ( 0, j, i )] = up1[POSITION_INDEX_X ( 169 - ntop + 5, j, i )];
+                }
+            for ( int j = nfront; j < nback; j++ )
+                for ( int i = nleft; i < nright; i++ ) {
+                    to_write[POSITION_INDEX_HOST ( 0, j, i )] = up_out[POSITION_INDEX_X ( 0, j + 5 - nfront, i + 5 - nleft )];
+                }
+
+            if ( group_id == 1 ) {
+                if ( mpi_id != root_id ) {
+                    printf("%d got answer for 1, sending to root!\n", mpi_id);
+                    MPI_Send(to_write, nSliceSize, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
+                }
+            } else {
+                printf("%d got answer for %d, sending to root!\n", mpi_id, group_id);
+                MPI_Send(to_write, nSliceSize, MPI_DOUBLE, 0, group_id, MPI_COMM_WORLD);
+            }
+            free ( up_out );
+        } else if ( mpi_id == root_id ) {
+            MPI_Status status;
+            MPI_Recv(to_write, nSliceSize, MPI_DOUBLE, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &status);
+        }
+    } else {
+        printf("%d finished single shot.\n",mpi_id);
+            up_out = ( double * ) calloc ( mic_slice_size , sizeof ( double ) );
+        for ( int j = 5; j < nMicYLength + 5; j++ )
+            for ( int i = 5; i < nMicXLength + 5; i++ ) {
+                up_out[POSITION_INDEX_X ( 0, j, i )] = up1[POSITION_INDEX_X ( 169 - ntop + 5, j, i )];
+            }
+        for ( int j = nfront; j < nback; j++ )
+            for ( int i = nleft; i < nright; i++ ) {
+                to_write[POSITION_INDEX_HOST ( 0, j, i )] = up_out[POSITION_INDEX_X ( 0, j + 5 - nfront, i + 5 - nleft )];
+            }
+        free ( up_out );
+    }
 
     for(int i = 0 ; i<MIC_COUNT+1 ;++i){
         free(mic_exchange_part_u[i][0]);
@@ -1033,53 +1133,51 @@ void calc_shot (
         free(mic_exchange_part_w[i][0]);
         free(mic_exchange_part_w[i][1]);
     }
+
 }
 
-int calc_slice_on_mic();
-
 int main ( int argc, char **argv ) {
-
+    // MPI init begin
+    MPI_Status status;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_id);
+    MPI_Comm_size(MPI_COMM_WORLD, &mpi_sum);
+    //MPI init end
     MEMORY_BLOCKS memory_blocks;
-
-    if ( argc < 4 ) {
-        printf ( "please add 3 parameter: inpurfile, outfile, logfile\n" );
-        exit ( 0 );
+    if (mpi_id == root_id) {
+        if ( argc < 4 ) {
+            printf ( "please add 3 parameter: inpurfile, outfile, logfile\n" );
+            exit ( 0 );
+        }
+        strcpy ( infile, argv[1] );
+        strcpy ( outfile, argv[2] );
+        strcpy ( logfile, argv[3] );
     }
-
-    strcpy ( infile, argv[1] );
-    strcpy ( outfile, argv[2] );
-    strcpy ( logfile, argv[3] );
-
     initailize();
-
-    memory_blocks.u   = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
-    memory_blocks.v   = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
-    memory_blocks.w   = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
-    memory_blocks.up  = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
-    memory_blocks.up1 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
-    memory_blocks.up2 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
-    memory_blocks.vp  = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
-    memory_blocks.vp1 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
-    memory_blocks.vp2 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
-    memory_blocks.wp  = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
-    memory_blocks.wp1 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
-    memory_blocks.wp2 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
-    memory_blocks.us  = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
-    memory_blocks.us1 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
-    memory_blocks.us2 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
-    memory_blocks.vs  = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
-    memory_blocks.vs1 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
-    memory_blocks.vs2 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
-    memory_blocks.ws  = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
-    memory_blocks.ws1 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
-    memory_blocks.ws2 = ( double * ) malloc ( sizeof ( double ) * mic_used_size );
-
-    memory_blocks.to_write = ( double* ) calloc ( nSliceSize, sizeof ( double ) );
-
-    nshot = nxshot * nyshot;
-
     dtx = dt / unit;
     dtz = dt / unit;
+
+    memory_blocks.u   = ( double * ) calloc ( mic_used_size , sizeof ( double ));
+    memory_blocks.v   = ( double * ) calloc ( mic_used_size , sizeof ( double ));
+    memory_blocks.w   = ( double * ) calloc ( mic_used_size , sizeof ( double ));
+    memory_blocks.up  = ( double * ) calloc ( mic_used_size , sizeof ( double ));
+    memory_blocks.up1 = ( double * ) calloc ( mic_used_size , sizeof ( double ));
+    memory_blocks.up2 = ( double * ) calloc ( mic_used_size , sizeof ( double ));
+    memory_blocks.vp  = ( double * ) calloc ( mic_used_size , sizeof ( double ));
+    memory_blocks.vp1 = ( double * ) calloc ( mic_used_size , sizeof ( double ));
+    memory_blocks.vp2 = ( double * ) calloc ( mic_used_size , sizeof ( double ));
+    memory_blocks.wp  = ( double * ) calloc ( mic_used_size , sizeof ( double ));
+    memory_blocks.wp1 = ( double * ) calloc ( mic_used_size , sizeof ( double ));
+    memory_blocks.wp2 = ( double * ) calloc ( mic_used_size , sizeof ( double ));
+    memory_blocks.us  = ( double * ) calloc ( mic_used_size , sizeof ( double ));
+    memory_blocks.us1 = ( double * ) calloc ( mic_used_size , sizeof ( double ));
+    memory_blocks.us2 = ( double * ) calloc ( mic_used_size , sizeof ( double ));
+    memory_blocks.vs  = ( double * ) calloc ( mic_used_size , sizeof ( double ));
+    memory_blocks.vs1 = ( double * ) calloc ( mic_used_size , sizeof ( double ));
+    memory_blocks.vs2 = ( double * ) calloc ( mic_used_size , sizeof ( double ));
+    memory_blocks.ws  = ( double * ) calloc ( mic_used_size , sizeof ( double ));
+    memory_blocks.ws1 = ( double * ) calloc ( mic_used_size , sizeof ( double ));
+    memory_blocks.ws2 = ( double * ) calloc ( mic_used_size , sizeof ( double ));
 
     for(int i =0;i<MIC_COUNT;++i)
     {
@@ -1087,44 +1185,196 @@ int main ( int argc, char **argv ) {
     }
     fout = fopen ( outfile, "wb" );
 
-    // shot is divided to cluster, MPI
-    for ( ishot = 1; ishot <= nshot; ishot++ ) {
-#ifdef SHOW_NORMAL_OUTPUT
-        printf ( "shot=%d\n", ishot );
-#endif
+    // assume that the number of cores is greater than the number of shots
+    if ( mpi_sum >= nshot ) {
+        l_parallel = true;
+        memory_blocks.to_write = ( double* ) calloc ( nSliceSize, sizeof ( double ) );
+        ///
+        double xmax = lt * dt * velmax;
+        int ntop = ncz_shot - xmax / unit - 10;
+        int nbottom = ncz_shot + xmax / unit + 10;
+
+
+        ntop = ntop - 1;
+
+
+        if ( ntop < 5 ) ntop = 5;
+        if ( nbottom > nz - 5 ) nbottom = nz - 5;
+
+
+        int nMicMaxZLength = nbottom - ntop;
+        printf("nMicMaxZLength %d\n", nMicMaxZLength);
+
+        ///
+        group_size = mpi_sum / nshot;
+
+        if ( nMicMaxZLength / group_size <= MIN_SLICE_LENGTH ) {
+            group_size = nMicMaxZLength / (MIN_SLICE_LENGTH + 1);
+            printf("new group_size: %d, nMicMaxZLength: %d\n", group_size, nMicMaxZLength);
+            total_sum = mpi_sum;
+            mpi_sum = nshot * group_size;
+            printf("mpi_sum: %d\n", mpi_sum);
+            if (mpi_id >= mpi_sum) {
+                int flag = 1;
+                MPI_Status status;
+                printf("Too many nodes. %d exit!\n", mpi_id);
+                MPI_Recv(&flag, 1, MPI_INT, 0, mpi_id, MPI_COMM_WORLD, &status);
+                printf("Now %d exits!\n", mpi_id);
+                MPI_Finalize();
+                return 0;
+            }
+        }
+
+        core_remain = mpi_sum % nshot;
+        group_limit = (group_size + 1) * core_remain; // mpi_id in [0, group_limit) is in groups with (group_size+1) cores
+        if ( mpi_id >= group_limit ) {
+            // group count start with 0 while core count start with 0
+            group_id = core_remain + ( mpi_id - group_limit ) / group_size;
+            group_begin = group_limit + (mpi_id - group_limit) / group_size * group_size;
+        } else {
+            group_id = mpi_id / (group_size + 1);
+            group_begin = group_id * (group_size + 1);
+            group_size++;
+        }
+        group_end = group_begin + group_size - 1;
+        group_pos = mpi_id - group_begin;
+        group_id ++ ;
+        printf("mpi_id: %d group_size: %d\n", mpi_id, group_size);
+        printf("GROUP %d %d %d %d %d %d %d %d\n", mpi_id, group_id, group_size, group_limit, core_remain, mpi_sum, group_begin, group_end);
+
+        printf("%d shot=%d\n", mpi_id, group_id);
+
+        ncy_shot = ncy_shot1 + ( group_id / nxshot ) * dyshot;
+        ncx_shot = ncx_shot1 + ( group_id % nxshot ) * dxshot;
+
+        if ( lt > SPLIT_THRESHOLD ) {
+            calc_shot ( ncx_shot, ncy_shot, 1, SPLIT_THRESHOLD, lt, &memory_blocks);
+            calc_shot ( ncx_shot, ncy_shot, SPLIT_THRESHOLD+1, lt, lt, &memory_blocks);
+        }
+
+        printf("%d finished calculating shot %d!\n", mpi_id, group_id);
+
+        if ( mpi_id == root_id ) {
+            fout = fopen ( outfile, "wb" );
+            fwrite ( memory_blocks.to_write, sizeof ( double ), nSliceSize, fout );
+            printf("Finished Writing 1\n");
+            for(int i = 2; i <= nshot; i++) {
+                printf("NOW 0 is waiting data %d !\n", i);
+                MPI_Status status;
+                MPI_Recv(memory_blocks.to_write, nSliceSize, MPI_DOUBLE, MPI_ANY_SOURCE, i, MPI_COMM_WORLD, &status);
+                fwrite ( memory_blocks.to_write, sizeof ( double ), nSliceSize, fout );
+                printf ("NOW 0 finished writing data %d !\n", i);
+            }
+            for(int i = mpi_sum; i < total_sum; i++) {
+                int flag = 1;
+                MPI_Status status;
+                printf("sending signal to %d to exit\n", i);
+                MPI_Send(&flag, 1, MPI_INT, i, i, MPI_COMM_WORLD);
+            }
+            fclose ( fout );
+        }
+    } else {
+        l_parallel = false;
+        int pshot, shot_remain, shot_begin, shot_end, shot_limit;
+        // shots from 1 to nshot;
+        pshot = nshot/mpi_sum;
+        shot_remain = nshot % mpi_sum;
+        if ( mpi_id >= mpi_sum - shot_remain ) {
+            shot_limit = mpi_sum - shot_remain;
+            shot_begin = shot_limit * pshot + 1;
+            pshot++;
+            shot_begin += pshot * (mpi_id - shot_limit);
+            shot_end = shot_begin + pshot;
+        } else {
+            shot_begin = mpi_id*pshot+1;
+            shot_end = shot_begin + pshot - 1;
+        }
+        printf("%d got %d tasks, shot %d to %d \n", mpi_id, pshot, shot_begin, shot_end);
+
+        write_buf = memory_blocks.to_write = ( double* ) calloc ( nSliceSize * (pshot+1), sizeof ( double ) );
+        printf("%x %x\n",write_buf, memory_blocks.to_write);
+        for ( ishot = shot_begin; ishot <= shot_end; ishot++ ) {
+            printf("nshot is %d\n", nshot);
+
+            ncy_shot = ncy_shot1 + ( ishot / nxshot ) * dyshot;
+            ncx_shot = ncx_shot1 + ( ishot % nxshot ) * dxshot;
+
+            calc_shot ( ncx_shot, ncy_shot, 1, lt, lt, &memory_blocks);
+
+            memset(memory_blocks.u,0,sizeof(double)*mic_used_size);
+            memset(memory_blocks.v,0,sizeof(double)*mic_used_size);
+            memset(memory_blocks.w,0,sizeof(double)*mic_used_size);
+            memset(memory_blocks.up ,0,sizeof(double)*mic_used_size);
+            memset(memory_blocks.up1,0,sizeof(double)*mic_used_size);
+            memset(memory_blocks.up2,0,sizeof(double)*mic_used_size);
+            memset(memory_blocks.vp ,0,sizeof(double)*mic_used_size);
+            memset(memory_blocks.vp1,0,sizeof(double)*mic_used_size);
+            memset(memory_blocks.vp2,0,sizeof(double)*mic_used_size);
+            memset(memory_blocks.wp ,0,sizeof(double)*mic_used_size);
+            memset(memory_blocks.wp1,0,sizeof(double)*mic_used_size);
+            memset(memory_blocks.wp2,0,sizeof(double)*mic_used_size);
+            memset(memory_blocks.us ,0,sizeof(double)*mic_used_size);
+            memset(memory_blocks.us1,0,sizeof(double)*mic_used_size);
+            memset(memory_blocks.us2,0,sizeof(double)*mic_used_size);
+            memset(memory_blocks.vs ,0,sizeof(double)*mic_used_size);
+            memset(memory_blocks.vs1,0,sizeof(double)*mic_used_size);
+            memset(memory_blocks.vs2,0,sizeof(double)*mic_used_size);
+            memset(memory_blocks.ws ,0,sizeof(double)*mic_used_size);
+            memset(memory_blocks.ws1,0,sizeof(double)*mic_used_size);
+            memset(memory_blocks.ws2,0,sizeof(double)*mic_used_size);
+            memory_blocks.to_write += nSliceSize;
+        }
+        if ( mpi_id == root_id ) {
+            fout = fopen ( outfile, "wb" );
+            fwrite ( write_buf, sizeof ( double ), nSliceSize*pshot, fout );
+            int flag = 0;
+            for(int i = 1; i < mpi_sum; i++) {
+                flag = 1;
+                int length;
+                MPI_Status status;
+                printf("sending signal to %d\n", i);
+                MPI_Send(&flag, 1, MPI_INT, i, i, MPI_COMM_WORLD);
+                printf("signal is already sent to %d\n", i);
+                MPI_Recv(write_buf, nSliceSize*(pshot+1), MPI_DOUBLE, i, i, MPI_COMM_WORLD, &status);
+                printf("root got data from %d\n", status.MPI_TAG);
+                MPI_Get_count(&status, MPI_DOUBLE, &length);
+                printf("get data from %d, length %d, should be %d\n", i, length, nSliceSize*pshot);
+                fwrite ( write_buf, sizeof ( double ), length, fout );
+            }
+            for(int i = mpi_sum; i < total_sum; i++) {
+                flag = 1;
+                MPI_Status status;
+                printf("sending signal to %d to exit\n", i);
+                MPI_Send(&flag, 1, MPI_INT, i, i, MPI_COMM_WORLD);
+            }
+            printf("Root finished!\n");
+            fclose(fout);
+        } else {
+            int flag = 0;
+            printf("Now %d is waiting for signal from root\n", mpi_id);
+            MPI_Recv(&flag, 1, MPI_INT, 0, mpi_id, MPI_COMM_WORLD, &status);
+            printf("Now %d prepared to send data of %d to %d to root\n", mpi_id, shot_begin, shot_end);
+            if ( flag ) {
+                MPI_Send(write_buf, nSliceSize*pshot, MPI_DOUBLE, 0, mpi_id, MPI_COMM_WORLD);
+                printf("%d Finished sending! Will be terminated!\n", mpi_id);
+            }
+        }
+    }
+
+    MPI_Finalize();
+
+    if ( mpi_id == root_id ) {
+        gettimeofday ( &end, NULL );
+        all_time = ( end.tv_sec - start.tv_sec ) + ( double ) ( end.tv_usec - start.tv_usec ) / 1000000.0;
+        printf ( "run time:\t%lf s\n", all_time );
         flog = fopen ( logfile, "a" );
-        fprintf(flog,"shot=%d\n",ishot);
-        fclose(flog);
-
-        ncy_shot = ncy_shot1 + ( ishot / nxshot ) * dyshot;
-        ncx_shot = ncx_shot1 + ( ishot % nxshot ) * dxshot;
-
-        calc_shot (
-                ncx_shot,
-                ncy_shot,
-                1, lt,
-                &memory_blocks
-                );
-
-        fwrite ( memory_blocks.to_write, sizeof ( double ), nSliceSize, fout );
-
-    }//for(ishot=1;ishot<=nshot;ishot++) end
-
-    fclose ( fout );
-
-    gettimeofday ( &end, NULL );
-    all_time = ( end.tv_sec - start.tv_sec ) + ( double ) ( end.tv_usec - start.tv_usec ) / 1000000.0;
-#ifdef SHOW_NORMAL_OUTPUT
-    printf ( "run time:\t%lf s\n", all_time );
-#endif
-    flog = fopen ( logfile, "a" );
-    fprintf ( flog, "\nrun time:\t%lf s\n\n", all_time );
-    fclose ( flog );
-    flog = fopen ( logfile, "a" );
-    fprintf ( flog, "------------end time------------\n" );
-    fclose ( flog );
-    system ( tmp );
-
-    return 1;
+        fprintf ( flog, "\nrun time:\t%lf s\n\n", all_time );
+        fclose ( flog );
+        flog = fopen ( logfile, "a" );
+        fprintf ( flog, "------------end time------------\n" );
+        fclose ( flog );
+        system ( tmp );
+    }
+    return 0;
 }
 
