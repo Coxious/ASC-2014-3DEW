@@ -14,7 +14,7 @@
 //#define SHOW_NORMAL_OUTPUT
 
 
-#define PARALLEL_L false
+#define PARALLEL_L true
 #define MAX_GROUP_SIZE 4
 #define SPLIT_THRESHOLD 80
 #define MIN_SLICE_LENGTH 5
@@ -36,8 +36,7 @@
 
 #define OUT_PUT_SLICE_Z_INDEX           169
 
-
-#define USE_MIC_MAX_LENGTH_THRESHOLD    100
+#define USE_MIC_MAX_LENGTH_THRESHOLD    10000
 
 #ifdef __MIC__
 
@@ -288,7 +287,6 @@ void initailize() {
     }
 
 }
-
 
 MIC_VAR
 inline
@@ -660,7 +658,7 @@ void calc_single_l_offload_to_mic(
             mic_swap_temp = mic_ws2; mic_ws2 = mic_ws1; mic_ws1 = mic_ws; mic_ws = mic_swap_temp;
         }
 #ifdef SHOW_NORMAL_OUTPUT
-            printf("First time offload initiated. \n");
+            // printf("First time offload initiated. \n");
 #endif
 }
 
@@ -767,16 +765,13 @@ void calc_shot (
 //  MIC CODE END
 
     if( l_parallel ) {
-        int *a = (int *) calloc(group_size+1, sizeof(int));
         int len = nMicMaxZLength / group_size;
-        int remain = nMicMaxZLength % group_size;
-        a[0] = 5;
-        for(int i = 1; i <= group_size; i++) {
-            if ( i < remain ) a[i] = a[i-1] + len + 1;
-            else a[i] = a[i-1] + len;
-        }
-        k_begin_n = a[group_pos]; k_end_n = a[group_pos+1];
-        free(a);
+        int tmp = nMicMaxZLength % group_size;
+        tmp = mpi_id - (group_size-tmp);
+        if (tmp < 0) tmp = 0;
+        k_begin_n = 5 + group_pos * len + tmp;
+        if ( mpi_id >= group_size - (nMicMaxZLength % group_size)) len++;
+        k_end_n = k_begin_n + len;
 
 
 // MIC CODE
@@ -896,7 +891,7 @@ void calc_shot (
             // Do normal way
             //
 #ifdef SHOW_NORMAL_OUTPUT
-            printf ( "l %d started normal nMicMaxLength %d %d %d\n", l, nMicXLength, nMicYLength, nMicZLength );
+            // printf ( "l %d started normal nMicMaxLength %d %d %d\n", l, nMicXLength, nMicYLength, nMicZLength );
 #endif
             calc_single_l ( i_begin, i_end, j_begin, j_end, k_begin, k_end,
                     up  , up1 , up2 , vp  , vp1 ,
@@ -920,7 +915,7 @@ void calc_shot (
             k_end = k_mic_begin;
 
 #ifdef SHOW_NORMAL_OUTPUT
-            printf ( "l %d started mic %d %d nMicMaxLength %d %d %d\n", l,k_begin, k_end, nMicXLength, nMicYLength, nMicZLength );
+            // printf ( "l %d started mic %d %d nMicMaxLength %d %d %d\n", l,k_begin, k_end, nMicXLength, nMicYLength, nMicZLength );
 #endif
             for(int i_mic=0;i_mic<MIC_COUNT;++i_mic){
                 mic_up [i_mic] = &up [POSITION_INDEX_X (k_mic_begin - 5 + mic_z_each_length * i_mic, 0,0)];
@@ -955,7 +950,7 @@ void calc_shot (
             {
                 #pragma omp section
                 {
-                    #pragma parallel for
+                    #pragma omp parallel for
                     for(int i_mic=0;i_mic<MIC_COUNT;++i_mic){
                         if(5 + cpu_z_length + i_mic * mic_z_each_length < k_mic_end ){
                             calc_single_l_offload_to_mic(
@@ -1017,7 +1012,7 @@ void calc_shot (
     if(init_mic_flag[0] == true)
     {
         // copy_length = mic_slice_size * ( mic_z_length + 10 );
-        if ( OUT_PUT_SLICE_Z_INDEX-ntop >= k_mic_begin) {
+        if ( k_end_n > OUT_PUT_SLICE_Z_INDEX-ntop && OUT_PUT_SLICE_Z_INDEX-ntop >= k_mic_begin) {
             int output_device_id = (OUT_PUT_SLICE_Z_INDEX - k_mic_begin -ntop )/mic_z_each_length;
 
 #ifdef SHOW_NORMAL_OUTPUT
@@ -1026,7 +1021,7 @@ void calc_shot (
             double * out_up1 = mic_up1[output_device_id];
             // ON MIC
 #pragma offload target(mic:output_device_id) \
-            out(out_up1 : length(mic_slice_size * ( mic_z_each_length + 10 )) MIC_REUSE) singal(out_up1)
+            out(out_up1 : length(mic_slice_size * ( mic_z_each_length + 10 )) MIC_REUSE) signal(out_up1)
             {}
 
 #pragma offload_wait target(mic:output_device_id) wait(out_up1)
