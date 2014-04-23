@@ -13,6 +13,12 @@
 
 //#define SHOW_NORMAL_OUTPUT
 
+
+#define PARALLEL_L false
+#define MAX_GROUP_SIZE 4
+#define SPLIT_THRESHOLD 80
+#define MIN_SLICE_LENGTH 5
+
 #define USE_OMP_PARALLEL_CALC                false
 
 #define USE_OMP_PARALLEL_GATHER              false
@@ -26,13 +32,10 @@
 // #    define  CORE_NUM 8
 // #endif
 
-#define MIC_MAX_OFFLOAD_BYTES           1024*1024*7
+#define MIC_MAX_OFFLOAD_BYTES           1024*1024*1024*7
 
 #define OUT_PUT_SLICE_Z_INDEX           169
 
-// MPI PARAMATER
-#define MAX_GROUP_SIZE 4
-#define SPLIT_THRESHOLD 80
 
 #define USE_MIC_MAX_LENGTH_THRESHOLD    100
 
@@ -50,9 +53,8 @@
 
 #define MIC_COUNT       1
 
-#define POSITION_INDEX_HOST_X(_z,_y,_x)        ((_z)*ny*nx + (_y)*nx + (_x))
-#define POSITION_INDEX_HOST_Y(_z,_y,_x)        ((_x)*nz*ny + (_z)*ny + (_y))
-#define POSITION_INDEX_HOST_Z(_z,_y,_x)        ((_y)*nx*nz + (_x)*nz + (_z))
+#define POSITION_INDEX_HOST(_z,_y,_x)        ((_z)*ny*nx + (_y)*nx + (_x))
+
 
 #ifndef POSITION_DEBUG_ASSERT
 
@@ -112,6 +114,8 @@ MIC_VAR int ncy_shot, ncx_shot;
 int nshot,ishot, total_sum = 0;
 double t0, tt;
 
+double *write_buf;;
+
 MIC_VAR double *wave;
 MIC_VAR double  c0;
 MIC_VAR double dtx, dtz;
@@ -150,6 +154,7 @@ int group_size, group_id, core_remain, group_limit, group_begin, group_end,  gro
 bool l_parallel;
 
 void initailize() {
+
     if(mpi_id == root_id) {
         strcpy ( tmp, "date " );
         strncat ( tmp, ">> ", 3 );
@@ -231,6 +236,8 @@ void initailize() {
     MPI_Bcast(buf, 14, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(fbuf, 4, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
+    omp_set_nested(1);
+
     nx = buf[2]; ny = buf[3]; nz = buf[4]; lt = buf[5]; nedge = buf[6]; ncx_shot1 = buf[7];
     ncy_shot1 = buf[8]; ncz_shot = buf[9]; nxshot = buf[10]; nyshot = buf[11];
     dxshot = buf[12]; dyshot = buf[13];
@@ -241,7 +248,8 @@ void initailize() {
 
     mic_used_size  = nx*ny*nz;
     mic_slice_size = nx*ny;
-  /*   mic_used_size = pow ( 2.* ( ( lt * dt * velmax ) / unit + 10. ) + 10. + 1., 3. );
+/*
+    mic_used_size = pow ( 2.* ( ( lt * dt * velmax ) / unit + 10. ) + 10. + 1., 3. );
     mic_slice_size = pow ( 2.* ( ( lt * dt * velmax ) / unit + 10. ) + 10. + 1, 2. );
  */
 
@@ -562,6 +570,10 @@ void calc_single_l_offload_to_mic(
             nocopy( mic_exchange_part_back_out_w : length ( 5 * mic_slice_size ) MIC_ALLOC )\
             signal ( mic_exchange_part_back_in_w )
 
+#ifdef SHOW_NORMAL_OUTPUT
+            printf("First time offload transfered. \n");
+#endif
+
         } else {
 
             #pragma offload_transfer target(mic:mic_device_id) \
@@ -610,8 +622,8 @@ void calc_single_l_offload_to_mic(
         nocopy(mic_ws : MIC_REUSE)\
         nocopy(mic_ws1: MIC_REUSE)\
         nocopy(mic_ws2: MIC_REUSE)\
-        wait(mic_exchange_part_back_w)\
-        signal(mic_exchange_part_back_w)
+        wait(mic_exchange_part_back_in_w)\
+        signal(mic_exchange_part_back_in_w)
         {
             // calc_single_l ( i_begin, i_end, j_begin, j_end, 5, k_mic_end - cpu_z_length,
 
@@ -647,6 +659,9 @@ void calc_single_l_offload_to_mic(
             mic_swap_temp = mic_vs2; mic_vs2 = mic_vs1; mic_vs1 = mic_vs; mic_vs = mic_swap_temp;
             mic_swap_temp = mic_ws2; mic_ws2 = mic_ws1; mic_ws1 = mic_ws; mic_ws = mic_swap_temp;
         }
+#ifdef SHOW_NORMAL_OUTPUT
+            printf("First time offload initiated. \n");
+#endif
 }
 
 
@@ -657,7 +672,7 @@ void calc_shot (
         PMEMORY_BLOCKS pMemBlocks
         ) {
 
-    int i_begin, i_end, j_begin, j_end, k_begin, k_end;
+    int i_begin, i_end, j_begin, j_end, k_begin, k_end, k_mic_begin, k_mic_end;
     int nMicXLength, nMicYLength, nMicZLength;
     int nMicMaxXLength, nMicMaxYLength, nMicMaxZLength;
 
@@ -712,14 +727,14 @@ void calc_shot (
     nMicMaxYLength = nback   - nfront;
     nMicMaxZLength = nbottom - ntop;
 
+    mic_slice_size = (nMicMaxXLength + 10)*(nMicMaxYLength + 10);
+
     int k_begin_n , k_end_n ,k_length_to_calc;
 
 //  MIC CODE
-    int k_length_to_calc;
     int mic_z_each_length;
     int mic_z_total_length;
     int cpu_z_length;
-    int k_mic_begin;
 
     double * mic_up [MIC_COUNT];
     double * mic_up1[MIC_COUNT];
@@ -774,18 +789,18 @@ void calc_shot (
 
     mic_z_each_length = MIC_CPU_RATE * k_length_to_calc;
 
-    if(mic_z_each_length * mic_slice_size > MIC_MAX_OFFLOAD_BYTES){
-        mic_z_each_length = MIC_MAX_OFFLOAD_BYTES / mic_slice_size;
+    // if(mic_z_each_length * mic_slice_size > MIC_MAX_OFFLOAD_BYTES){
+    //     mic_z_each_length = MIC_MAX_OFFLOAD_BYTES / mic_slice_size;
 
-        printf("[-]Unable to offload %d slices for too large. Now offload %.2f of total for each mic, %d slices\n",
-            (int)(MIC_CPU_RATE * k_length_to_calc),mic_z_each_length * 1. / k_length_to_calc, mic_z_each_length);
-    }else if(mic_z_each_length < 5){
+    //     printf("[-]Unable to offload %d slices for too large. Now offload %.2f of total for each mic, %d slices\n",
+    //         (int)(MIC_CPU_RATE * k_length_to_calc),mic_z_each_length * 1. / k_length_to_calc, mic_z_each_length);
+    // }else if(mic_z_each_length < 5){
 
-        mic_z_each_length = 5;
+    //     mic_z_each_length = 5;
 
-        printf("[-]Unable to calc on mic with slice size less than 5. Adjust to 5 now as %.2f of all\n",
-            mic_z_each_length * 1. / k_length_to_calc);
-    }
+    //     printf("[-]Unable to calc on mic with slice size less than 5. Adjust to 5 now as %.2f of all\n",
+    //         mic_z_each_length * 1. / k_length_to_calc);
+    // }
 
     mic_z_total_length = MIC_COUNT * mic_z_each_length;
 
@@ -936,35 +951,44 @@ void calc_shot (
             memcpy ( mic_exchange_part_v[MIC_COUNT][1] ,&(v[POSITION_INDEX_X(k_mic_end,0,0)]), sizeof ( double )* 5 * mic_slice_size );
             memcpy ( mic_exchange_part_w[MIC_COUNT][1] ,&(w[POSITION_INDEX_X(k_mic_end,0,0)]), sizeof ( double )* 5 * mic_slice_size );
 
-            for(int i_mic=0;i_mic<MIC_COUNT;++i_mic){
-                if(5 + cpu_z_length + i_mic * mic_z_each_length < k_mic_end ){
-                    calc_single_l_offload_to_mic(
-                        i_begin,  i_end,  j_begin,  j_end,
-                        mic_up [i_mic] ,  mic_up1[i_mic] ,  mic_up2[i_mic] ,  mic_vp [i_mic] ,  mic_vp1[i_mic] ,
-                        mic_vp2[i_mic] ,  mic_wp [i_mic] ,  mic_wp1[i_mic] ,  mic_wp2[i_mic] ,  mic_us [i_mic] ,
-                        mic_us1[i_mic] ,  mic_us2[i_mic] ,  mic_vs [i_mic] ,  mic_vs1[i_mic] ,  mic_vs2[i_mic] ,
-                        mic_ws [i_mic] ,  mic_ws1[i_mic] ,  mic_ws2[i_mic] ,  mic_u  [i_mic] ,  mic_v  [i_mic] ,  mic_w[i_mic],
-                        nMicMaxXLength,  nMicMaxYLength,  ntop,  nleft,  nfront,  ncz_shot,  l,
-                        ncy_shot, ncx_shot, c0 , dtx, dtz ,  i_mic,
-                        cpu_z_length + i_mic * mic_z_each_length ,mic_slice_size,
-                        mic_exchange_part_u[i_mic][0] , mic_exchange_part_v[i_mic][0] , mic_exchange_part_w[i_mic][0],
-                        mic_exchange_part_u[i_mic+1][1] , mic_exchange_part_v[i_mic+1][1] , mic_exchange_part_w[i_mic+1][1],
-                        mic_exchange_part_u[i_mic][1] , mic_exchange_part_v[i_mic][1] , mic_exchange_part_w[i_mic][1],
-                        mic_exchange_part_u[i_mic+1][0] , mic_exchange_part_v[i_mic+1][0] , mic_exchange_part_w[i_mic+1][0],
-                        mic_z_each_length
-                    );
+#pragma omp parallel sections
+            {
+                #pragma omp section
+                {
+                    #pragma parallel for
+                    for(int i_mic=0;i_mic<MIC_COUNT;++i_mic){
+                        if(5 + cpu_z_length + i_mic * mic_z_each_length < k_mic_end ){
+                            calc_single_l_offload_to_mic(
+                                i_begin,  i_end,  j_begin,  j_end,
+                                mic_up [i_mic] ,  mic_up1[i_mic] ,  mic_up2[i_mic] ,  mic_vp [i_mic] ,  mic_vp1[i_mic] ,
+                                mic_vp2[i_mic] ,  mic_wp [i_mic] ,  mic_wp1[i_mic] ,  mic_wp2[i_mic] ,  mic_us [i_mic] ,
+                                mic_us1[i_mic] ,  mic_us2[i_mic] ,  mic_vs [i_mic] ,  mic_vs1[i_mic] ,  mic_vs2[i_mic] ,
+                                mic_ws [i_mic] ,  mic_ws1[i_mic] ,  mic_ws2[i_mic] ,  mic_u  [i_mic] ,  mic_v  [i_mic] ,  mic_w[i_mic],
+                                nMicMaxXLength,  nMicMaxYLength,  ntop,  nleft,  nfront,  ncz_shot,  l,
+                                ncy_shot, ncx_shot, c0 , dtx, dtz ,  i_mic,
+                                cpu_z_length + i_mic * mic_z_each_length ,mic_slice_size,
+                                mic_exchange_part_u[i_mic][0] , mic_exchange_part_v[i_mic][0] , mic_exchange_part_w[i_mic][0],
+                                mic_exchange_part_u[i_mic+1][1] , mic_exchange_part_v[i_mic+1][1] , mic_exchange_part_w[i_mic+1][1],
+                                mic_exchange_part_u[i_mic][1] , mic_exchange_part_v[i_mic][1] , mic_exchange_part_w[i_mic][1],
+                                mic_exchange_part_u[i_mic+1][0] , mic_exchange_part_v[i_mic+1][0] , mic_exchange_part_w[i_mic+1][0],
+                                mic_z_each_length
+                            );
+                        }
+                    }
                 }
-            }
 
-            calc_single_l ( i_begin, i_end, j_begin, j_end, k_begin, k_end,
-                    up  , up1 , up2 , vp  , vp1 ,
-                    vp2 , wp  , wp1 , wp2 , us  ,
-                    us1 , us2 , vs  , vs1 , vs2 ,
-                    ws  , ws1 , ws2 , u   , v   , w,
-                    nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront,ncz_shot, l ,
-                    ncy_shot,ncx_shot, c0 , dtx, dtz
-                );
-
+                #pragma omp section
+                {
+                    calc_single_l ( i_begin, i_end, j_begin, j_end, k_begin, k_end,
+                        up  , up1 , up2 , vp  , vp1 ,
+                        vp2 , wp  , wp1 , wp2 , us  ,
+                        us1 , us2 , vs  , vs1 , vs2 ,
+                        ws  , ws1 , ws2 , u   , v   , w,
+                        nMicMaxXLength, nMicMaxYLength, ntop, nleft, nfront,ncz_shot, l ,
+                        ncy_shot,ncx_shot, c0 , dtx, dtz
+                        );
+                }
+    }
             double *swap_temp;
             swap_temp = up2; up2 = up1; up1 = up; up = swap_temp;
             swap_temp = vp2; vp2 = vp1; vp1 = vp; vp = swap_temp;
@@ -1002,21 +1026,22 @@ void calc_shot (
             double * out_up1 = mic_up1[output_device_id];
             // ON MIC
 #pragma offload target(mic:output_device_id) \
-            out(out_up1 : length(mic_slice_size * ( mic_z_each_length + 10 )) MIC_REUSE)
+            out(out_up1 : length(mic_slice_size * ( mic_z_each_length + 10 )) MIC_REUSE) singal(out_up1)
             {}
+
+#pragma offload_wait target(mic:output_device_id) wait(out_up1)
 
 #ifdef SHOW_NORMAL_OUTPUT
             printf("All back... \n");
 #endif
-
         }
 
         for(int i_mic=0;i_mic<MIC_COUNT;++i_mic){
             if(init_mic_flag[i_mic]){
                 printf("Free %d MIC data...uvw\n",i_mic);
-                double * mic_free_u   =  mic_u[i_mic];
-                double * mic_free_v   =  mic_v[i_mic];
-                double * mic_free_w   =  mic_w[i_mic];
+                double * mic_free_u   =  mic_u  [i_mic];
+                double * mic_free_v   =  mic_v  [i_mic];
+                double * mic_free_w   =  mic_w  [i_mic];
                 double * mic_free_up1 =  mic_up1[i_mic];
                 double * mic_free_up2 =  mic_up2[i_mic];
                 double * mic_free_vp  =  mic_vp [i_mic];
@@ -1187,7 +1212,7 @@ int main ( int argc, char **argv ) {
 
     // assume that the number of cores is greater than the number of shots
     if ( mpi_sum >= nshot ) {
-        l_parallel = true;
+        l_parallel = PARALLEL_L;
         memory_blocks.to_write = ( double* ) calloc ( nSliceSize, sizeof ( double ) );
         ///
         double xmax = lt * dt * velmax;
@@ -1247,10 +1272,9 @@ int main ( int argc, char **argv ) {
         ncy_shot = ncy_shot1 + ( group_id / nxshot ) * dyshot;
         ncx_shot = ncx_shot1 + ( group_id % nxshot ) * dxshot;
 
-        if ( lt > SPLIT_THRESHOLD ) {
-            calc_shot ( ncx_shot, ncy_shot, 1, SPLIT_THRESHOLD, lt, &memory_blocks);
-            calc_shot ( ncx_shot, ncy_shot, SPLIT_THRESHOLD+1, lt, lt, &memory_blocks);
-        }
+
+        calc_shot ( ncx_shot, ncy_shot, 1, lt, lt, &memory_blocks);
+
 
         printf("%d finished calculating shot %d!\n", mpi_id, group_id);
 
@@ -1292,7 +1316,7 @@ int main ( int argc, char **argv ) {
         printf("%d got %d tasks, shot %d to %d \n", mpi_id, pshot, shot_begin, shot_end);
 
         write_buf = memory_blocks.to_write = ( double* ) calloc ( nSliceSize * (pshot+1), sizeof ( double ) );
-        printf("%x %x\n",write_buf, memory_blocks.to_write);
+        // printf("%p %p\n",write_buf, memory_blocks.to_write);
         for ( ishot = shot_begin; ishot <= shot_end; ishot++ ) {
             printf("nshot is %d\n", nshot);
 
